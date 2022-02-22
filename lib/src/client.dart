@@ -1,6 +1,9 @@
 
+import 'dart:async';
+import 'dart:convert';
 import 'package:lime/lime.dart';
 import 'application.dart';
+import 'client_error.dart';
 
 identity (x) => x;
 const maxConnectionTryCount = 10;
@@ -14,20 +17,21 @@ class Client {
     bool _closing = false;
     int _connectionTryCount = 0;
     ClientChannel _clientChannel;
+    final _messageReceivers = [];
+    final _commandResolves = <String, dynamic>{};
     
     // Client :: String -> Transport? -> Client
-    Client({required this.uri, required this.transport, required this.application}) : _clientChannel = ClientChannel(transport) {
-        this._messageReceivers = [];
-        this._notificationReceivers = [];
-        this._commandReceivers = [];
-        this._commandResolves = {};
-        this.sessionPromise = new Promise(() => { });
-        this.sessionFinishedHandlers = [];
-        this.sessionFailedHandlers = [];
+    Client({required uri, required transport, required application}) : _clientChannel = ClientChannel(transport) {
+        _notificationReceivers = [];
+        _commandReceivers = [];
+        _commandResolves = {};
+        sessionPromise = new Promise(() => { });
+        sessionFinishedHandlers = [];
+        sessionFailedHandlers = [];
 
         _initializeClientChannel();
 
-        this._extensions = {};
+        _extensions = {};
     }
 
     // connectWithGuest :: String -> Promise Session
@@ -87,17 +91,17 @@ class Client {
 
     _initializeClientChannel() {
         // transport.onClose = () => {
-        //     this.listening = false;
-        //     if (!this._closing) {
+        //     listening = false;
+        //     if (!_closing) {
         //         // Use an exponential backoff for the timeout
         //         let timeout = 100 * Math.pow(2, _connectionTryCount);
 
         //         // try to reconnect after the timeout
         //         setTimeout(() => {
-        //             if (!this._closing) {
-        //                 this._transport = this._transportFactory();
-        //                 this._initializeClientChannel();
-        //                 this.connect();
+        //             if (!_closing) {
+        //                 _transport = _transportFactory();
+        //                 _initializeClientChannel();
+        //                 connect();
         //             }
         //         }, timeout);
         //     }
@@ -127,7 +131,7 @@ class Client {
             _notificationReceivers
                 .forEach((receiver) => receiver.predicate(notification) && receiver.callback(notification));
 
-        _clientChannel.onCommand = (c) {
+        _clientChannel.onCommand = (Command c) {
             (_commandResolves[c.id] || identity)(c);
             _commandReceivers.forEach((receiver) =>
                 receiver.predicate(c) && receiver.callback(c));
@@ -233,11 +237,11 @@ class Client {
         ),);
     }
 
-    _getExtension(type, to = null) {
-        let extension = this._extensions[type];
+    _getExtension(type, {to}) {
+        let extension = _extensions[type];
         if (!extension) {
             extension = new type(this, to);
-            this._extensions[type] = extension;
+            _extensions[type] = extension;
         }
         return extension;
     }
@@ -251,7 +255,7 @@ class Client {
         }
 
         return Promise.resolve(
-            this.sessionPromise
+            sessionPromise
                 .then(s => s)
                 .catch(s => Promise.resolve(s))
         );
@@ -268,100 +272,107 @@ class Client {
     }
 
     // sendCommand :: Command -> Number -> Promise Command
-    Future sendCommand(Command command, {int? timeout}) {
-        var commandPromise = Promise.race([
-            new Promise((resolve, reject) => {
-                this._commandResolves[command.id] = (c) => {
-                    if (!c.status)
-                        return;
+    Future<Command?> sendCommand(Command command, {int? timeout}) {
+        final commandPromise = Future.any([
+            Future<Command?>(() {
+                final _completer = Completer<Command>();
 
-                    if (c.status === Lime.CommandStatus.SUCCESS) {
-                        resolve(c);
-                    }
-                    else {
-                        const cmd = JSON.stringify(c);
-                        reject(new ClientError(cmd));
-                    }
+                _commandResolves[command.id] = (Command c) {
+                    if (c.status == null) return _completer.future;
+                  
+                    _commandResolves.remove(command.id);
 
-                    delete this._commandResolves[command.id];
+                    if (c.status == CommandStatus.success) {
+                        return Future.value(c);
+                    }
+                    
+                    final cmd = jsonEncode(c);
+                    return Future.error(ClientError(message: cmd));
+                    
                 };
             }),
-            new Promise((_, reject) => {
-                setTimeout(() => {
-                    if (!this._commandResolves[command.id])
-                        return;
+            Future<Command?>(() {
+              final _completer = Completer<Command>();
 
-                    delete this._commandResolves[command.id];
-                    command.status = 'failure';
-                    command.timeout = true;
+                Future.delayed(Duration(milliseconds: timeout ?? application.commandTimeout,),() {
+                    if (_commandResolves[command.id] == null) return _completer.future;
 
-                    const cmd = JSON.stringify(command);
-                    reject(new ClientError(cmd));
-                }, timeout);
-            })
+                    _commandResolves.remove(command.id);
+                    command.status = CommandStatus.failure;
+                    
+                    /// TODO: Review this attribuition
+                    // command.timeout = true;
+
+                    final cmd = jsonEncode(command);
+                    return Future.error(ClientError(message: cmd));
+                });
+            }),
         ]);
 
-        this._clientChannel.sendCommand(command);
+        _clientChannel.sendCommand(command);
         return commandPromise;
     }
 
-    // processCommand :: Command -> Number -> Promise Command
-    processCommand(command, timeout = this._application.commandTimeout) {
-        return this._clientChannel.processCommand(command, timeout);
-    }
+    // // processCommand :: Command -> Number -> Promise Command
+    // Future processCommand(Command command, {int? timeout}) {
+    //     return _clientChannel.processCommand(command, timeout: timeout ?? application.commandTimeout);
+    // }
 
     // addMessageReceiver :: String -> (Message -> ()) -> Function
     addMessageReceiver(predicate, callback) {
-        predicate = this.processPredicate(predicate);
+        predicate = processPredicate(predicate);
 
-        this._messageReceivers.push({ predicate, callback });
-        return () => this._messageReceivers = this._messageReceivers.filter(this.filterReceiver(predicate, callback));
+        _messageReceivers.add({ predicate, callback });
+        return () {
+          _messageReceivers.clear();
+          _messageReceivers.addAll(_messageReceivers.where(filterReceiver(predicate, callback)));
+        };
     }
 
     clearMessageReceivers() {
-        this._messageReceivers = [];
+        _messageReceivers.clear();
     }
 
     // addCommandReceiver :: Function -> (Command -> ()) -> Function
     addCommandReceiver(predicate, callback) {
-        predicate = this.processPredicate(predicate);
+        predicate = processPredicate(predicate);
 
-        this._commandReceivers.push({ predicate, callback });
-        return () => this._commandReceivers = this._commandReceivers.filter(this.filterReceiver(predicate, callback));
+        _commandReceivers.push({ predicate, callback });
+        return () => _commandReceivers = _commandReceivers.filter(filterReceiver(predicate, callback));
     }
 
     clearCommandReceivers() {
-        this._commandReceivers = [];
+        _commandReceivers = [];
     }
 
     // addNotificationReceiver :: String -> (Notification -> ()) -> Function
     addNotificationReceiver(predicate, callback) {
-        predicate = this.processPredicate(predicate);
+        predicate = processPredicate(predicate);
 
-        this._notificationReceivers.push({ predicate, callback });
-        return () => this._notificationReceivers = this._notificationReceivers.filter(this.filterReceiver(predicate, callback));
+        _notificationReceivers.push({ predicate, callback });
+        return () => _notificationReceivers = _notificationReceivers.filter(filterReceiver(predicate, callback));
     }
 
     clearNotificationReceivers() {
-        this._notificationReceivers = [];
+        _notificationReceivers = [];
     }
 
     addSessionFinishedHandlers(callback) {
-        this.sessionFinishedHandlers.push(callback);
-        return () => this.sessionFinishedHandlers = this.sessionFinishedHandlers.filter(this.filterReceiver(null, callback));
+        sessionFinishedHandlers.push(callback);
+        return () => sessionFinishedHandlers = sessionFinishedHandlers.filter(filterReceiver(null, callback));
     }
 
     clearSessionFinishedHandlers() {
-        this.sessionFinishedHandlers = [];
+        sessionFinishedHandlers = [];
     }
 
     addSessionFailedHandlers(callback) {
-        this.sessionFailedHandlers.push(callback);
-        return () => this.sessionFailedHandlers = this.sessionFailedHandlers.filter(this.filterReceiver(null, callback));
+        sessionFailedHandlers.push(callback);
+        return () => sessionFailedHandlers = sessionFailedHandlers.filter(filterReceiver(null, callback));
     }
 
     clearSessionFailedHandlers() {
-        this.sessionFailedHandlers = [];
+        sessionFailedHandlers = [];
     }
 
     processPredicate(predicate) {
@@ -378,38 +389,29 @@ class Client {
     }
 
     filterReceiver(predicate, callback) {
-        return r => r.predicate !== predicate && r.callback !== callback;
+        return (r) => r.predicate != predicate && r.callback != callback;
     }
 
     get listening() {
-        return this._listening;
+        return _listening;
     }
 
     set listening(listening) {
         listening = listening;
-        if (this.onListeningChanged) {
-            this.onListeningChanged(listening, this);
+        if (onListeningChanged) {
+            onListeningChanged(listening, this);
         }
     }
 
     get ArtificialIntelligence() {
-        return this._getExtension(ArtificialIntelligenceExtension, this._application.domain);
+        return _getExtension(ArtificialIntelligenceExtension, _application.domain);
     }
 
     get Media() {
-        return this._getExtension(MediaExtension, this._application.domain);
+        return _getExtension(MediaExtension, _application.domain);
     }
 
     get Chat() {
-        return this._getExtension(ChatExtension);
-    }
-}
-
-class ClientError extends Error {
-    constructor(message) {
-        super();
-
-        this.name = '';
-        this.message = message;
+        return _getExtension(ChatExtension);
     }
 }
