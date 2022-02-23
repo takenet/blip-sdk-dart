@@ -4,8 +4,8 @@ import 'dart:convert';
 import 'package:lime/lime.dart';
 import 'application.dart';
 import 'client_error.dart';
+import 'models/listener_model.dart';
 
-identity (x) => x;
 const maxConnectionTryCount = 10;
 
 class Client {
@@ -13,18 +13,18 @@ class Client {
     final Application application;
     final Transport transport;
 
+    final ClientChannel _clientChannel;
+    final _notificationListeners = <Listener<Notification>>[];
+    final _commandListeners = <Listener<Command>>[];
+    final _messageListeners = <Listener<Message>>[];
+    final _commandResolves = <String, dynamic>{};
+
     bool _listening = false;
     bool _closing = false;
     int _connectionTryCount = 0;
-    ClientChannel _clientChannel;
-    final _messageReceivers = [];
-    final _commandResolves = <String, dynamic>{};
     
     // Client :: String -> Transport? -> Client
     Client({required uri, required transport, required application}) : _clientChannel = ClientChannel(transport) {
-        _notificationReceivers = [];
-        _commandReceivers = [];
-        _commandResolves = {};
         sessionPromise = new Promise(() => { });
         sessionFinishedHandlers = [];
         sessionFailedHandlers = [];
@@ -107,10 +107,9 @@ class Client {
         //     }
         // };
 
-        _clientChannel.onMessage = (message) {
-            final shouldNotify =
-                message.id &&
-                (!message.to || _clientChannel.localNode?.substring(0, message.to.length).toLowerCase() == message.to.toLowerCase());
+        // onMessage
+        _clientChannel.onReceiveMessage.stream.listen((Message message) {
+            final shouldNotify = _clientChannel.isForMe(message);
 
             if (shouldNotify) {
                 sendNotification(Notification(
@@ -120,22 +119,32 @@ class Client {
                     metadata: {
                         '#message.to': message.to,
                         '#message.uniqueId': message.metadata?['#uniqueId'],
-                    },)
+                    },),
                 );
             }
 
-            _loop(0, shouldNotify, message);
-        };
+            _loop(shouldNotify, message);
+        });
 
-        _clientChannel.onNotification = (notification) =>
-            _notificationReceivers
-                .forEach((receiver) => receiver.predicate(notification) && receiver.callback(notification));
+        _clientChannel.onReceiveNotification.stream.listen((notification) {
+            for (final listener in _notificationListeners) {
+              if(listener.filter(notification)) listener.stream.sink.add(notification);
+            }
+        },);
 
-        _clientChannel.onCommand = (Command c) {
-            (_commandResolves[c.id] || identity)(c);
-            _commandReceivers.forEach((receiver) =>
-                receiver.predicate(c) && receiver.callback(c));
-        };
+        _clientChannel.onReceiveCommand.stream.listen((Command command) {
+            final resolve = _commandResolves[command.id];
+            
+            if (resolve != null) {
+              resolve(command);
+            }
+
+            for(final listener in _commandListeners) {
+              if (listener.filter(command)) {
+                listener.stream.sink.add(command);
+              }
+            }
+        },);
 
         sessionPromise = Promise((resolve, reject) {
             _clientChannel.onSessionFinished = (s) {
@@ -149,43 +158,31 @@ class Client {
         });
     }
 
-    _loop(i, shouldNotify, message) {
+    _loop(final bool shouldNotify, final Message message) {
         try {
-            if (i < _messageReceivers.length) {
-                if (_messageReceivers[i].predicate(message)) {
-                    return Promise.resolve(_messageReceivers[i].callback(message))
-                        .then((result) {
-                            return Promise((resolve, reject) {
-                                if (result == false) {
-                                    reject();
-                                }
-                                resolve();
-                            });
-                        })
-                        .then(() => _loop(i + 1, shouldNotify, message));
-                }
-                else {
-                    _loop(i + 1, shouldNotify, message);
-                }
+          for(final listener in _messageListeners) {
+            if(listener.filter(message)) {
+              listener.stream.sink.add(message);
             }
-            else {
-                _notify(shouldNotify, message, null);
-            }
-        }
-        catch (e) {
-            _notify(shouldNotify, message, e);
+          }
+
+          notify(shouldNotify, message);
+        }catch(e) {
+          notify(shouldNotify, message, error: e);
         }
     }
 
-    void _notify(shouldNotify, message, e) {
-        if (shouldNotify && e) {
+    bool isForMe(Envelope envelope) => _clientChannel.isForMe(envelope);
+
+    void notify(bool shouldNotify, Message message, {error}) {
+        if (shouldNotify && error != null) {
             sendNotification(Notification(
                 id: message.id,
                 to: message.from,
                 event: NotificationEvent.failed,
                 reason: Reason(
                     code: 101,
-                    description: e.message
+                    description: error.message
                 ),
             ),);
         }
@@ -319,42 +316,47 @@ class Client {
     // }
 
     // addMessageReceiver :: String -> (Message -> ()) -> Function
-    addMessageReceiver(predicate, callback) {
-        predicate = processPredicate(predicate);
-
-        _messageReceivers.add({ predicate, callback });
+    void Function() addMessageListener(StreamController<Message> stream, {bool Function(Message)? filter}) {
+        _messageListeners.add(Listener<Message>(stream, filter: filter));
+        
         return () {
-          _messageReceivers.clear();
-          _messageReceivers.addAll(_messageReceivers.where(filterReceiver(predicate, callback)));
+          stream.close();
+          _messageListeners.removeWhere(filterListener<Message>(stream, filter));
         };
     }
 
-    clearMessageReceivers() {
-        _messageReceivers.clear();
+    clearMessageListeners() {
+      _messageListeners.forEach(_closeStream);
+      _messageListeners.clear();
     }
 
-    // addCommandReceiver :: Function -> (Command -> ()) -> Function
-    addCommandReceiver(predicate, callback) {
-        predicate = processPredicate(predicate);
+    // addCommandListener :: Function -> (Command -> ()) -> Function
+    void Function() addCommandListener(StreamController<Command> stream, {bool Function(Command)? filter}) {
+       _commandListeners.add(Listener<Command>(stream, filter: filter));
 
-        _commandReceivers.push({ predicate, callback });
-        return () => _commandReceivers = _commandReceivers.filter(filterReceiver(predicate, callback));
+        return () {
+          stream.close();
+          _commandListeners.removeWhere(filterListener(stream, filter));
+        };
     }
 
-    clearCommandReceivers() {
-        _commandReceivers = [];
+    clearCommandListeners() {
+        _commandListeners.forEach(_closeStream);
+        _commandListeners.clear();
     }
 
-    // addNotificationReceiver :: String -> (Notification -> ()) -> Function
-    addNotificationReceiver(predicate, callback) {
-        predicate = processPredicate(predicate);
-
-        _notificationReceivers.push({ predicate, callback });
-        return () => _notificationReceivers = _notificationReceivers.filter(filterReceiver(predicate, callback));
+    // addNotificationListener :: String -> (Notification -> ()) -> Function
+    void Function() addNotificationListener(StreamController<Notification> stream, {bool Function(Notification)? filter}) {
+        _notificationListeners.add(Listener<Notification>(stream, filter: filter));
+        return () {
+          stream.close();
+          _notificationListeners.removeWhere(filterListener(stream, filter));
+        };
     }
 
-    clearNotificationReceivers() {
-        _notificationReceivers = [];
+    clearNotificationListeners() {
+      _notificationListeners.forEach(_closeStream);
+      _notificationListeners.clear();
     }
 
     addSessionFinishedHandlers(callback) {
@@ -375,21 +377,21 @@ class Client {
         sessionFailedHandlers = [];
     }
 
-    processPredicate(predicate) {
-        if (typeof predicate !== 'function') {
-            if (predicate === true || !predicate) {
-                predicate = () => true;
-            } else {
-                const value = predicate;
-                predicate = (envelope) => envelope.event === value || envelope.type === value;
-            }
-        }
+    // processPredicate(predicate) {
+    //     if (typeof predicate !== 'function') {
+    //         if (predicate === true || !predicate) {
+    //             predicate = () => true;
+    //         } else {
+    //             const value = predicate;
+    //             predicate = (envelope) => envelope.event === value || envelope.type === value;
+    //         }
+    //     }
 
-        return predicate;
-    }
+    //     return predicate;
+    // }
 
-    filterReceiver(predicate, callback) {
-        return (r) => r.predicate != predicate && r.callback != callback;
+    filterListener<T extends Envelope>(StreamController stream, bool Function(T)? filter) {
+        return (Listener l) => l.stream == stream && l.filter == filter;
     }
 
     get listening() {
@@ -402,6 +404,8 @@ class Client {
             onListeningChanged(listening, this);
         }
     }
+
+    void _closeStream(Listener listener) => listener.stream.close();
 
     get ArtificialIntelligence() {
         return _getExtension(ArtificialIntelligenceExtension, _application.domain);
