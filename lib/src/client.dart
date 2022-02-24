@@ -270,41 +270,38 @@ class Client {
 
     // sendCommand :: Command -> Number -> Promise Command
     Future<Command?> sendCommand(Command command, {int? timeout}) {
-        final commandPromise = Future.any([
-            Future<Command?>(() {
-                final _completer = Completer<Command>();
+      final commandPromise = Future.any(
+        [
+          Future<Command>(() {
+            final c = Completer<Command>();
 
-                _commandResolves[command.id] = (Command c) {
-                    if (c.status == null) return _completer.future;
-                  
-                    _commandResolves.remove(command.id);
+            _commandResolves[command.id] = (Command command) {
+              _commandResolves.remove(command.id);
 
-                    if (c.status == CommandStatus.success) {
-                        return Future.value(c);
-                    }
-                    
-                    final cmd = jsonEncode(c);
-                    return Future.error(ClientError(message: cmd));
-                    
-                };
-            }),
-            Future<Command?>(() {
-              final _completer = Completer<Command>();
+              if (command.status == CommandStatus.success) {
+                c.complete(command);
+              } else {
+                c.completeError(ClientError(
+                    message: 'Error on sendCommand: ${jsonEncode(command.toJson())}'));
+              }
+            };
 
-                Future.delayed(Duration(milliseconds: timeout ?? application.commandTimeout,),() {
-                    if (_commandResolves[command.id] == null) return _completer.future;
+            return c.future;
+          }),
+          Future(() {
+            final c = Completer<Command>();
 
-                    _commandResolves.remove(command.id);
-                    command.status = CommandStatus.failure;
-                    
-                    /// TODO: Review this attribuition
-                    // command.timeout = true;
+            Future.delayed(
+                Duration(milliseconds: timeout ?? application.commandTimeout),
+                () {
+              return c.completeError(ClientError(
+                  message: 'Timeout reached - command: ${jsonEncode(command.toJson())}'));
+            });
 
-                    final cmd = jsonEncode(command);
-                    return Future.error(ClientError(message: cmd));
-                });
-            }),
-        ]);
+            return c.future;
+          }),
+        ],
+      );
 
         _clientChannel.sendCommand(command);
         return commandPromise;
