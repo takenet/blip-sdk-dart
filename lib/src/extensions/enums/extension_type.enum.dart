@@ -1,0 +1,3 @@
+enum ExtensionType {
+  media,
+}

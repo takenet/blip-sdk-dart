@@ -3,6 +3,9 @@ import 'dart:convert';
 import 'package:lime/lime.dart';
 import 'application.dart';
 import 'client_error.dart';
+import 'extensions/base.extension.dart';
+import 'extensions/enums/extension_type.enum.dart';
+import 'extensions/media/media.extension.dart';
 import 'models/listener_model.dart';
 
 const maxConnectionTryCount = 10;
@@ -19,20 +22,18 @@ class Client {
   final _commandResolves = <String, dynamic>{};
   final _sessionFinishedHandlers = <StreamController>[];
   final _sessionFailedHandlers = <StreamController>[];
+  final _extensions = <ExtensionType, BaseExtension>{};
 
   bool _listening = false;
   bool _closing = false;
   int _connectionTryCount = 0;
 
   // Client :: String -> Transport? -> Client
-  Client(
-      {required this.uri, required this.transport, required this.application})
+  Client({required this.uri, required this.transport, required this.application})
       : _clientChannel = ClientChannel(transport) {
     // sessionPromise = new Promise(() => { });
 
     _initializeClientChannel();
-
-    //_extensions = {};
   }
 
   // connectWithGuest :: String -> Promise Session
@@ -92,7 +93,7 @@ class Client {
     });
   }
 
-  _initializeClientChannel() {
+  void _initializeClientChannel() {
     // transport.onClose = () => {
     //     listening = false;
     //     if (!_closing) {
@@ -134,8 +135,9 @@ class Client {
     _clientChannel.onReceiveNotification.stream.listen(
       (notification) {
         for (final listener in _notificationListeners) {
-          if (listener.filter(notification))
+          if (listener.filter(notification)) {
             listener.stream.sink.add(notification);
+          }
         }
       },
     );
@@ -180,7 +182,7 @@ class Client {
     // });
   }
 
-  _loop(final bool shouldNotify, final Message message) {
+  void _loop(final bool shouldNotify, final Message message) {
     try {
       for (final listener in _messageListeners) {
         if (listener.filter(message)) {
@@ -210,14 +212,10 @@ class Client {
 
     if (shouldNotify && application.notifyConsumed) {
       sendNotification(
-        Notification(
-            id: message.id,
-            to: message.pp ?? message.from,
-            event: NotificationEvent.consumed,
-            metadata: {
-              '#message.to': message.to,
-              '#message.uniqueId': message.metadata?['#uniqueId'],
-            }),
+        Notification(id: message.id, to: message.pp ?? message.from, event: NotificationEvent.consumed, metadata: {
+          '#message.to': message.to,
+          '#message.uniqueId': message.metadata?['#uniqueId'],
+        }),
       );
     }
   }
@@ -247,25 +245,10 @@ class Client {
           uri: '/receipt',
           type: 'application/vnd.lime.receipt+json',
           resource: {
-            'events': [
-              'failed',
-              'accepted',
-              'dispatched',
-              'received',
-              'consumed'
-            ]
+            'events': ['failed', 'accepted', 'dispatched', 'received', 'consumed']
           }),
     );
   }
-
-  // _getExtension(type, {to}) {
-  //     let extension = _extensions[type];
-  //     if (!extension) {
-  //         extension = new type(this, to);
-  //         _extensions[type] = extension;
-  //     }
-  //     return extension;
-  // }
 
   // close :: Promise ()
   Future<void> close() async {
@@ -293,7 +276,7 @@ class Client {
   }
 
   // sendCommand :: Command -> Number -> Promise Command
-  Future<Command?> sendCommand(Command command, {int? timeout}) {
+  Future<Command> sendCommand(Command command, {int? timeout}) {
     final commandPromise = Future.any(
       [
         Future<Command>(() {
@@ -305,9 +288,7 @@ class Client {
             if (command.status == CommandStatus.success) {
               c.complete(command);
             } else {
-              c.completeError(ClientError(
-                  message:
-                      'Error on sendCommand: ${jsonEncode(command.toJson())}'));
+              c.completeError(ClientError(message: 'Error on sendCommand: ${jsonEncode(command.toJson())}'));
             }
           };
 
@@ -316,12 +297,8 @@ class Client {
         Future(() {
           final c = Completer<Command>();
 
-          Future.delayed(
-              Duration(milliseconds: timeout ?? application.commandTimeout),
-              () {
-            return c.completeError(ClientError(
-                message:
-                    'Timeout reached - command: ${jsonEncode(command.toJson())}'));
+          Future.delayed(Duration(milliseconds: timeout ?? application.commandTimeout), () {
+            return c.completeError(ClientError(message: 'Timeout reached - command: ${jsonEncode(command.toJson())}'));
           });
 
           return c.future;
@@ -339,8 +316,7 @@ class Client {
   // }
 
   // addMessageReceiver :: String -> (Message -> ()) -> Function
-  void Function() addMessageListener(StreamController<Message> stream,
-      {bool Function(Message)? filter}) {
+  void Function() addMessageListener(StreamController<Message> stream, {bool Function(Message)? filter}) {
     _messageListeners.add(Listener<Message>(stream, filter: filter));
 
     return () {
@@ -349,14 +325,13 @@ class Client {
     };
   }
 
-  clearMessageListeners() {
+  void clearMessageListeners() {
     _messageListeners.forEach(_closeStream);
     _messageListeners.clear();
   }
 
   // addCommandListener :: Function -> (Command -> ()) -> Function
-  void Function() addCommandListener(StreamController<Command> stream,
-      {bool Function(Command)? filter}) {
+  void Function() addCommandListener(StreamController<Command> stream, {bool Function(Command)? filter}) {
     _commandListeners.add(Listener<Command>(stream, filter: filter));
 
     return () {
@@ -365,7 +340,7 @@ class Client {
     };
   }
 
-  clearCommandListeners() {
+  void clearCommandListeners() {
     _commandListeners.forEach(_closeStream);
     _commandListeners.clear();
   }
@@ -380,12 +355,12 @@ class Client {
     };
   }
 
-  clearNotificationListeners() {
+  void clearNotificationListeners() {
     _notificationListeners.forEach(_closeStream);
     _notificationListeners.clear();
   }
 
-  addSessionFinishedHandlers(StreamController<Session> stream) {
+  void Function() addSessionFinishedHandlers(StreamController<Session> stream) {
     _sessionFinishedHandlers.add(stream);
     return () {
       stream.close();
@@ -393,14 +368,14 @@ class Client {
     };
   }
 
-  clearSessionFinishedHandlers() {
+  void clearSessionFinishedHandlers() {
     for (var element in _sessionFinishedHandlers) {
       element.close();
     }
     _sessionFinishedHandlers.clear();
   }
 
-  addSessionFailedHandlers(StreamController<Session> stream) {
+  void Function() addSessionFailedHandlers(StreamController<Session> stream) {
     _sessionFailedHandlers.add(stream);
     return () {
       stream.close();
@@ -408,28 +383,14 @@ class Client {
     };
   }
 
-  clearSessionFailedHandlers() {
+  void clearSessionFailedHandlers() {
     for (var element in _sessionFailedHandlers) {
       element.close();
     }
     _sessionFailedHandlers.clear();
   }
 
-  // processPredicate(predicate) {
-  //     if (typeof predicate !== 'function') {
-  //         if (predicate === true || !predicate) {
-  //             predicate = () => true;
-  //         } else {
-  //             const value = predicate;
-  //             predicate = (envelope) => envelope.event === value || envelope.type === value;
-  //         }
-  //     }
-
-  //     return predicate;
-  // }
-
-  filterListener<T extends Envelope>(
-      StreamController stream, bool Function(T)? filter) {
+  bool Function(Listener) filterListener<T extends Envelope>(StreamController stream, bool Function(T)? filter) {
     return (Listener l) => l.stream == stream && l.filter == filter;
   }
 
@@ -446,15 +407,19 @@ class Client {
 
   void _closeStream(Listener listener) => listener.stream.close();
 
-  // get ArtificialIntelligence() {
-  //     return _getExtension(ArtificialIntelligenceExtension, _application.domain);
-  // }
+  T _getExtension<T extends BaseExtension>(ExtensionType type, String to) {
+    var _extension = _extensions[type];
+    if (_extension == null) {
+      switch (type) {
+        case ExtensionType.media:
+          _extension = MediaExtension(this, to);
+          break;
+      }
 
-  // get Media() {
-  //     return _getExtension(MediaExtension, _application.domain);
-  // }
+      _extensions[type] = _extension;
+    }
+    return _extension as T;
+  }
 
-  // get Chat() {
-  //     return _getExtension(ChatExtension);
-  // }
+  MediaExtension get media => _getExtension<MediaExtension>(ExtensionType.media, application.domain);
 }
