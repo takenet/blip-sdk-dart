@@ -23,6 +23,7 @@ class Client {
   final _sessionFinishedHandlers = <StreamController>[];
   final _sessionFailedHandlers = <StreamController>[];
   final _extensions = <ExtensionType, BaseExtension>{};
+  final onListeningChanged = StreamController();
 
   bool _listening = false;
   bool _closing = false;
@@ -103,6 +104,8 @@ class Client {
     //         // try to reconnect after the timeout
     //         setTimeout(() => {
     //             if (!_closing) {
+    // transport.onEvelope?.close();
+    // transport.onEvelope = StreamController<Map<String, dynamic>>();
     //                 _transport = _transportFactory();
     //                 _initializeClientChannel();
     //                 connect();
@@ -220,9 +223,9 @@ class Client {
     }
   }
 
-  Future _sendPresenceCommand() async {
+  Future<Command?> _sendPresenceCommand() async {
     if (application.authentication is GuestAuthentication) {
-      return;
+      return null;
     }
     return sendCommand(
       Command(
@@ -234,9 +237,9 @@ class Client {
     );
   }
 
-  Future _sendReceiptsCommand() async {
+  Future<Command?> _sendReceiptsCommand() async {
     if (application.authentication is GuestAuthentication) {
-      return;
+      return null;
     }
     return sendCommand(
       Command(
@@ -394,16 +397,13 @@ class Client {
     return (Listener l) => l.stream == stream && l.filter == filter;
   }
 
-  // get listening() {
-  //     return _listening;
-  // }
+  bool get listening => _listening;
 
-  // set listening(listening) {
-  //     listening = listening;
-  //     if (onListeningChanged) {
-  //         onListeningChanged(listening, this);
-  //     }
-  // }
+  set listening(bool listening) {
+    _listening = listening;
+
+    onListeningChanged.sink.add(listening);
+  }
 
   void _closeStream(Listener listener) => listener.stream.close();
 
