@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 import 'package:lime/lime.dart';
 import 'application.dart';
 import 'client_error.dart';
@@ -15,7 +16,7 @@ class Client {
   final Application application;
   final Transport transport;
 
-  final ClientChannel _clientChannel;
+  ClientChannel _clientChannel;
   final _notificationListeners = <Listener<Notification>>[];
   final _commandListeners = <Listener<Command>>[];
   final _messageListeners = <Listener<Message>>[];
@@ -29,15 +30,12 @@ class Client {
   bool _closing = false;
   int _connectionTryCount = 0;
 
-  // Client :: String -> Transport? -> Client
-  Client({required this.uri, required this.transport, required this.application})
+  Client(
+      {required this.uri, required this.transport, required this.application})
       : _clientChannel = ClientChannel(transport) {
-    // sessionPromise = new Promise(() => { });
-
     _initializeClientChannel();
   }
 
-  // connectWithGuest :: String -> Promise Session
   connectWithGuest(identifier) {
     if (!identifier) throw ArgumentError.notNull('The identifier is required');
     application.identifier = identifier;
@@ -45,7 +43,6 @@ class Client {
     return connect();
   }
 
-  // connectWithPassword :: String -> String -> Promise Session
   connectWithPassword(identifier, password, presence) {
     if (!identifier) throw ArgumentError.notNull('The identifier is required');
     if (!password) throw ArgumentError.notNull('The password is required');
@@ -57,7 +54,6 @@ class Client {
     return connect();
   }
 
-  // connectWithKey :: String -> String -> Promise Session
   connectWithKey(identifier, key, presence) {
     if (!identifier) throw ArgumentError.notNull('The identifier is required');
     if (!key) throw ArgumentError.notNull('The key is required');
@@ -95,26 +91,31 @@ class Client {
   }
 
   void _initializeClientChannel() {
-    // transport.onClose = () => {
-    //     listening = false;
-    //     if (!_closing) {
-    //         // Use an exponential backoff for the timeout
-    //         let timeout = 100 * Math.pow(2, _connectionTryCount);
+    transport.onClose.stream.listen((event) async {
+      _listening = false;
+      if (!_closing) {
+        // Use an exponential backoff for the timeout
+        num timeout = 100 * pow(2, _connectionTryCount);
 
-    //         // try to reconnect after the timeout
-    //         setTimeout(() => {
-    //             if (!_closing) {
-    // transport.onEvelope?.close();
-    // transport.onEvelope = StreamController<Map<String, dynamic>>();
-    //                 _transport = _transportFactory();
-    //                 _initializeClientChannel();
-    //                 connect();
-    //             }
-    //         }, timeout);
-    //     }
-    // };
+        // try to reconnect after the timeout
+        Future.delayed(Duration(milliseconds: timeout.round()), () async {
+          if (!_closing) {
+            transport.onEvelope?.close();
+            transport.onEvelope = StreamController<Map<String, dynamic>>();
 
-    // onMessage
+            transport.onClose.close();
+            transport.onClose = StreamController<bool>();
+
+            _clientChannel = ClientChannel(transport);
+
+            _initializeClientChannel();
+
+            await connect();
+          }
+        });
+      }
+    });
+
     _clientChannel.onReceiveMessage.stream.listen((Message message) {
       final shouldNotify = _clientChannel.isForMe(message);
 
@@ -172,17 +173,6 @@ class Client {
         stream.sink.add(session);
       }
     });
-
-    // sessionPromise = Promise((resolve, reject) {
-    //     _clientChannel.onSessionFinished = (s) {
-    //         resolve(s);
-    //         sessionFinishedHandlers.forEach((handler) => handler(s));
-    //     };
-    //     _clientChannel.onSessionFailed = (s) {
-    //         reject(s);
-    //         sessionFailedHandlers.forEach((handler) => handler(s));
-    //     };
-    // });
   }
 
   void _loop(final bool shouldNotify, final Message message) {
@@ -215,10 +205,14 @@ class Client {
 
     if (shouldNotify && application.notifyConsumed) {
       sendNotification(
-        Notification(id: message.id, to: message.pp ?? message.from, event: NotificationEvent.consumed, metadata: {
-          '#message.to': message.to,
-          '#message.uniqueId': message.metadata?['#uniqueId'],
-        }),
+        Notification(
+            id: message.id,
+            to: message.pp ?? message.from,
+            event: NotificationEvent.consumed,
+            metadata: {
+              '#message.to': message.to,
+              '#message.uniqueId': message.metadata?['#uniqueId'],
+            }),
       );
     }
   }
@@ -248,37 +242,33 @@ class Client {
           uri: '/receipt',
           type: 'application/vnd.lime.receipt+json',
           resource: {
-            'events': ['failed', 'accepted', 'dispatched', 'received', 'consumed']
+            'events': [
+              'failed',
+              'accepted',
+              'dispatched',
+              'received',
+              'consumed'
+            ]
           }),
     );
   }
 
-  // close :: Promise ()
   Future<void> close() async {
     _closing = true;
 
     if (_clientChannel.state == SessionState.established) {
       await _clientChannel.sendFinishingSession();
     }
-
-    // return Promise.resolve(
-    //     sessionPromise
-    //         .then(s => s)
-    //         .catch(s => Promise.resolve(s))
-    // );
   }
 
-  // sendMessage :: Message -> ()
   void sendMessage(Message message) {
     _clientChannel.sendMessage(message);
   }
 
-  // sendNotification :: Notification -> ()
   void sendNotification(Notification notification) {
     _clientChannel.sendNotification(notification);
   }
 
-  // sendCommand :: Command -> Number -> Promise Command
   Future<Command> sendCommand(Command command, {int? timeout}) {
     final commandPromise = Future.any(
       [
@@ -291,7 +281,9 @@ class Client {
             if (command.status == CommandStatus.success) {
               c.complete(command);
             } else {
-              c.completeError(ClientError(message: 'Error on sendCommand: ${jsonEncode(command.toJson())}'));
+              c.completeError(ClientError(
+                  message:
+                      'Error on sendCommand: ${jsonEncode(command.toJson())}'));
             }
           };
 
@@ -300,8 +292,12 @@ class Client {
         Future(() {
           final c = Completer<Command>();
 
-          Future.delayed(Duration(milliseconds: timeout ?? application.commandTimeout), () {
-            return c.completeError(ClientError(message: 'Timeout reached - command: ${jsonEncode(command.toJson())}'));
+          Future.delayed(
+              Duration(milliseconds: timeout ?? application.commandTimeout),
+              () {
+            return c.completeError(ClientError(
+                message:
+                    'Timeout reached - command: ${jsonEncode(command.toJson())}'));
           });
 
           return c.future;
@@ -313,13 +309,8 @@ class Client {
     return commandPromise;
   }
 
-  // // processCommand :: Command -> Number -> Promise Command
-  // Future processCommand(Command command, {int? timeout}) {
-  //     return _clientChannel.processCommand(command, timeout: timeout ?? application.commandTimeout);
-  // }
-
-  // addMessageReceiver :: String -> (Message -> ()) -> Function
-  void Function() addMessageListener(StreamController<Message> stream, {bool Function(Message)? filter}) {
+  void Function() addMessageListener(StreamController<Message> stream,
+      {bool Function(Message)? filter}) {
     _messageListeners.add(Listener<Message>(stream, filter: filter));
 
     return () {
@@ -333,8 +324,8 @@ class Client {
     _messageListeners.clear();
   }
 
-  // addCommandListener :: Function -> (Command -> ()) -> Function
-  void Function() addCommandListener(StreamController<Command> stream, {bool Function(Command)? filter}) {
+  void Function() addCommandListener(StreamController<Command> stream,
+      {bool Function(Command)? filter}) {
     _commandListeners.add(Listener<Command>(stream, filter: filter));
 
     return () {
@@ -348,7 +339,6 @@ class Client {
     _commandListeners.clear();
   }
 
-  // addNotificationListener :: String -> (Notification -> ()) -> Function
   void Function() addNotificationListener(StreamController<Notification> stream,
       {bool Function(Notification)? filter}) {
     _notificationListeners.add(Listener<Notification>(stream, filter: filter));
@@ -393,7 +383,8 @@ class Client {
     _sessionFailedHandlers.clear();
   }
 
-  bool Function(Listener) filterListener<T extends Envelope>(StreamController stream, bool Function(T)? filter) {
+  bool Function(Listener) filterListener<T extends Envelope>(
+      StreamController stream, bool Function(T)? filter) {
     return (Listener l) => l.stream == stream && l.filter == filter;
   }
 
@@ -421,5 +412,6 @@ class Client {
     return _extension as T;
   }
 
-  MediaExtension get media => _getExtension<MediaExtension>(ExtensionType.media, application.domain);
+  MediaExtension get media =>
+      _getExtension<MediaExtension>(ExtensionType.media, application.domain);
 }
