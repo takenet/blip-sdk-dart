@@ -8,102 +8,102 @@ class ClientBuilder {
 
   ClientBuilder({required this.transport}) : application = Application();
 
-  withApplication(Application application) {
+  ClientBuilder withApplication(Application application) {
     this.application = application;
     return this;
   }
 
-  withIdentifier(String identifier) {
+  ClientBuilder withIdentifier(String identifier) {
     application.identifier = identifier;
     return this;
   }
 
-  withInstance(String instance) {
+  ClientBuilder withInstance(String instance) {
     application.instance = instance;
     return this;
   }
 
   // withDomain :: String -> ClientBuilder
-  withDomain(String domain) {
+  ClientBuilder withDomain(String domain) {
     application.domain = domain;
     return this;
   }
 
   // withScheme :: String -> ClientBuilder
-  withScheme(String scheme) {
+  ClientBuilder withScheme(String scheme) {
     application.scheme = scheme;
     return this;
   }
 
   // withHostName :: String -> ClientBuilder
-  withHostName(String hostName) {
+  ClientBuilder withHostName(String hostName) {
     application.hostName = hostName;
     return this;
   }
 
-  withPort(int port) {
+  ClientBuilder withPort(int port) {
     application.port = port;
     return this;
   }
 
-  withAccessKey(String accessKey) {
+  ClientBuilder withAccessKey(String accessKey) {
     application.authentication = KeyAuthentication(key: accessKey);
     return this;
   }
 
-  withPassword(String password) {
+  ClientBuilder withPassword(String password) {
     application.authentication = PlainAuthentication(password: password);
     return this;
   }
 
-  withToken(String token, String issuer) {
+  ClientBuilder withToken(String token, String issuer) {
     application.authentication = ExternalAuthentication(token: token, issuer: issuer);
     return this;
   }
 
   // withCompression :: Lime.SessionCompression.NONE -> ClientBuilder
-  withCompression(SessionCompression compression) {
+  ClientBuilder withCompression(SessionCompression compression) {
     application.compression = compression;
     return this;
   }
 
   // withEncryption :: Lime.SessionEncryption.NONE -> ClientBuilder
-  withEncryption(SessionEncryption encryption) {
+  ClientBuilder withEncryption(SessionEncryption encryption) {
     application.encryption = encryption;
     return this;
   }
 
-  withRoutingRule(RoutingRule routingRule) {
+  ClientBuilder withRoutingRule(RoutingRule routingRule) {
     application.presence.routingRule = routingRule;
     return this;
   }
 
-  withEcho(bool echo) {
+  ClientBuilder withEcho(bool echo) {
     application.presence.echo = echo;
     return this;
   }
 
-  withPriority(int priority) {
+  ClientBuilder withPriority(int priority) {
     application.presence.priority = priority;
     return this;
   }
 
-  withRoundRobin(bool roundRobin) {
+  ClientBuilder withRoundRobin(bool roundRobin) {
     application.presence.roundRobin = roundRobin;
     return this;
   }
 
-  withNotifyConsumed(bool notifyConsumed) {
+  ClientBuilder withNotifyConsumed(bool notifyConsumed) {
     application.notifyConsumed = notifyConsumed;
     return this;
   }
 
-  withCommandTimeout(int timeoutInMilliSecs) {
+  ClientBuilder withCommandTimeout(int timeoutInMilliSecs) {
     application.commandTimeout = timeoutInMilliSecs;
     return this;
   }
 
-  build() {
+  Client build() {
     final uri = '${application.scheme}://${application.hostName}:${application.port}';
     return Client(uri: uri, transport: transport, application: application);
   }

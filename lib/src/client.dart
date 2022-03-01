@@ -30,20 +30,19 @@ class Client {
   bool _closing = false;
   int _connectionTryCount = 0;
 
-  Client(
-      {required this.uri, required this.transport, required this.application})
+  Client({required this.uri, required this.transport, required this.application})
       : _clientChannel = ClientChannel(transport) {
     _initializeClientChannel();
   }
 
-  connectWithGuest(identifier) {
+  Future<Session> connectWithGuest(identifier) {
     if (!identifier) throw ArgumentError.notNull('The identifier is required');
     application.identifier = identifier;
     application.authentication = GuestAuthentication();
     return connect();
   }
 
-  connectWithPassword(identifier, password, presence) {
+  Future<Session> connectWithPassword(identifier, password, presence) {
     if (!identifier) throw ArgumentError.notNull('The identifier is required');
     if (!password) throw ArgumentError.notNull('The password is required');
 
@@ -54,7 +53,7 @@ class Client {
     return connect();
   }
 
-  connectWithKey(identifier, key, presence) {
+  Future<Session> connectWithKey(identifier, key, presence) {
     if (!identifier) throw ArgumentError.notNull('The identifier is required');
     if (!key) throw ArgumentError.notNull('The key is required');
 
@@ -66,7 +65,7 @@ class Client {
     return connect();
   }
 
-  connect() {
+  Future<Session> connect() {
     if (_connectionTryCount >= maxConnectionTryCount) {
       throw Exception(
           'Could not connect: Max connection try count of $maxConnectionTryCount reached. Please check you network and refresh the page.');
@@ -205,14 +204,10 @@ class Client {
 
     if (shouldNotify && application.notifyConsumed) {
       sendNotification(
-        Notification(
-            id: message.id,
-            to: message.pp ?? message.from,
-            event: NotificationEvent.consumed,
-            metadata: {
-              '#message.to': message.to,
-              '#message.uniqueId': message.metadata?['#uniqueId'],
-            }),
+        Notification(id: message.id, to: message.pp ?? message.from, event: NotificationEvent.consumed, metadata: {
+          '#message.to': message.to,
+          '#message.uniqueId': message.metadata?['#uniqueId'],
+        }),
       );
     }
   }
@@ -242,22 +237,16 @@ class Client {
           uri: '/receipt',
           type: 'application/vnd.lime.receipt+json',
           resource: {
-            'events': [
-              'failed',
-              'accepted',
-              'dispatched',
-              'received',
-              'consumed'
-            ]
+            'events': ['failed', 'accepted', 'dispatched', 'received', 'consumed']
           }),
     );
   }
 
-  Future<void> close() async {
+  Future<Session?> close() async {
     _closing = true;
 
     if (_clientChannel.state == SessionState.established) {
-      await _clientChannel.sendFinishingSession();
+      return _clientChannel.sendFinishingSession();
     }
   }
 
@@ -281,9 +270,7 @@ class Client {
             if (command.status == CommandStatus.success) {
               c.complete(command);
             } else {
-              c.completeError(ClientError(
-                  message:
-                      'Error on sendCommand: ${jsonEncode(command.toJson())}'));
+              c.completeError(ClientError(message: 'Error on sendCommand: ${jsonEncode(command.toJson())}'));
             }
           };
 
@@ -292,12 +279,8 @@ class Client {
         Future(() {
           final c = Completer<Command>();
 
-          Future.delayed(
-              Duration(milliseconds: timeout ?? application.commandTimeout),
-              () {
-            return c.completeError(ClientError(
-                message:
-                    'Timeout reached - command: ${jsonEncode(command.toJson())}'));
+          Future.delayed(Duration(milliseconds: timeout ?? application.commandTimeout), () {
+            return c.completeError(ClientError(message: 'Timeout reached - command: ${jsonEncode(command.toJson())}'));
           });
 
           return c.future;
@@ -309,8 +292,7 @@ class Client {
     return commandPromise;
   }
 
-  void Function() addMessageListener(StreamController<Message> stream,
-      {bool Function(Message)? filter}) {
+  void Function() addMessageListener(StreamController<Message> stream, {bool Function(Message)? filter}) {
     _messageListeners.add(Listener<Message>(stream, filter: filter));
 
     return () {
@@ -324,8 +306,7 @@ class Client {
     _messageListeners.clear();
   }
 
-  void Function() addCommandListener(StreamController<Command> stream,
-      {bool Function(Command)? filter}) {
+  void Function() addCommandListener(StreamController<Command> stream, {bool Function(Command)? filter}) {
     _commandListeners.add(Listener<Command>(stream, filter: filter));
 
     return () {
@@ -383,8 +364,7 @@ class Client {
     _sessionFailedHandlers.clear();
   }
 
-  bool Function(Listener) filterListener<T extends Envelope>(
-      StreamController stream, bool Function(T)? filter) {
+  bool Function(Listener) filterListener<T extends Envelope>(StreamController stream, bool Function(T)? filter) {
     return (Listener l) => l.stream == stream && l.filter == filter;
   }
 
@@ -412,6 +392,5 @@ class Client {
     return _extension as T;
   }
 
-  MediaExtension get media =>
-      _getExtension<MediaExtension>(ExtensionType.media, application.domain);
+  MediaExtension get media => _getExtension<MediaExtension>(ExtensionType.media, application.domain);
 }
