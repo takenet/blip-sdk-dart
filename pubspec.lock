@@ -77,10 +77,10 @@ packages:
   lime:
     dependency: "direct main"
     description:
-      path: "../lime-dart"
-      relative: true
-    source: path
-    version: "0.0.1"
+      name: lime
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "0.0.3"
   lints:
     dependency: transitive
     description:
@@ -88,6 +88,13 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "1.0.1"
+  logging:
+    dependency: transitive
+    description:
+      name: logging
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "1.0.2"
   matcher:
     dependency: transitive
     description:
@@ -109,6 +116,20 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "1.8.0"
+  pretty_json:
+    dependency: transitive
+    description:
+      name: pretty_json
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "2.0.0"
+  simple_logger:
+    dependency: transitive
+    description:
+      name: simple_logger
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "1.9.0"
   sky_engine:
     dependency: transitive
     description: flutter
