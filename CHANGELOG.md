@@ -1,3 +1,7 @@
+## 0.0.3
+
+* Updated Lime version
+
 ## 0.0.2
 
 * Fixes for pub points
