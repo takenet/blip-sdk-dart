@@ -2,8 +2,6 @@
 
 > Simple BLiP SDK for Flutter
 
-**This is a work in progress**
-
 [![pub version](https://img.shields.io/pub/v/blip_sdk.svg)](https://pub.dev/packages/blip_sdk)
 [![Test Status](https://github.com/takenet/blip-sdk-dart/actions/workflows/tests.yml/badge.svg)](https://github.com/takenet/blip-sdk-dart/actions)
 

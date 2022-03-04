@@ -1,3 +1,7 @@
+## 0.0.4
+
+* Readme fix
+
 ## 0.0.3
 
 * Updated Lime version
