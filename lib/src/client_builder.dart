@@ -57,7 +57,8 @@ class ClientBuilder {
   }
 
   ClientBuilder withToken(String token, String issuer) {
-    application.authentication = ExternalAuthentication(token: token, issuer: issuer);
+    application.authentication =
+        ExternalAuthentication(token: token, issuer: issuer);
     return this;
   }
 
@@ -104,7 +105,8 @@ class ClientBuilder {
   }
 
   Client build() {
-    final uri = '${application.scheme}://${application.hostName}:${application.port}';
+    final uri =
+        '${application.scheme}://${application.hostName}:${application.port}';
     return Client(uri: uri, transport: transport, application: application);
   }
 }

@@ -28,6 +28,9 @@ class Application {
     Authentication? authentication,
     this.commandTimeout = 6000,
   })  : identifier = identifier ?? guid(),
-        presence = presence ?? Presence(status: PresenceStatus.available, routingRule: RoutingRule.identity),
+        presence = presence ??
+            Presence(
+                status: PresenceStatus.available,
+                routingRule: RoutingRule.identity),
         authentication = authentication ?? GuestAuthentication();
 }

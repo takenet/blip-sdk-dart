@@ -23,7 +23,8 @@ class BaseExtension {
   }
 
   Command createSetCommand(String uri, String? type, resource, {String? id}) {
-    final command = Command(id: id, method: CommandMethod.set, uri: uri, resource: resource);
+    final command = Command(
+        id: id, method: CommandMethod.set, uri: uri, resource: resource);
 
     if (type?.isNotEmpty ?? false) {
       command.type = type;
@@ -37,7 +38,12 @@ class BaseExtension {
   }
 
   Command createMergeCommand(String uri, String? type, resource, {String? id}) {
-    final command = Command(id: id, method: CommandMethod.merge, uri: uri, type: type, resource: resource);
+    final command = Command(
+        id: id,
+        method: CommandMethod.merge,
+        uri: uri,
+        type: type,
+        resource: resource);
 
     if (to != null) {
       command.to = to;
@@ -56,7 +62,8 @@ class BaseExtension {
     return command;
   }
 
-  Future<Command> processCommand(final Command command) async => client.sendCommand(command);
+  Future<Command> processCommand(final Command command) async =>
+      client.sendCommand(command);
 
   String buildResourceQuery(String uri, Map<String, dynamic> query) {
     var i = 0;

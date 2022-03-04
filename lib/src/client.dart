@@ -242,7 +242,7 @@ class Client {
     );
   }
 
-  Future<Session?> close() async {
+  FutureOr<Session?> close() async {
     _closing = true;
 
     if (_clientChannel.state == SessionState.established) {
