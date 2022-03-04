@@ -1,8 +1,8 @@
 name: blip_sdk
-description: Simple BLiP SDK for Dart
-version: 0.0.1
+description: Simple BLiP SDK for Flutter/Dart
+version: 0.0.2
 homepage: https://github.com/takenet/blip-sdk-dart#readme
-repository: https://github.com/takenet/lime-dart
+repository: https://github.com/takenet/blip-sdk-dart
 
 environment:
   sdk: ">=2.12.0 <3.0.0"

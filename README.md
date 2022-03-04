@@ -4,12 +4,12 @@
 
 **This is a work in progress**
 
-[![pub version](https://img.shields.io/pub/v/blip-sdk.svg)](https://pub.dev/packages/blip-sdk)
+[![pub version](https://img.shields.io/pub/v/blip_sdk.svg)](https://pub.dev/packages/blip_sdk)
 [![Test Status](https://github.com/takenet/blip-sdk-dart/actions/workflows/tests.yml/badge.svg)](https://github.com/takenet/blip-sdk-dart/actions)
 
 ---
 
-Read more about BLiP [here](http://blip.ai/)
+Read more about BLiP [here](https://blip.ai/)
 
 ### Installing
 
@@ -23,7 +23,7 @@ Simply install the `blip_sdk` package from the [pub.dev](pub.dev) registry, to a
 
 You will need an `identifier` and an `access key` to connect a chatbot to **BLiP**. To get them:
 
-- Go to [Painel BLiP](http://portal.blip.ai/) and login;
+- Go to [Painel BLiP](https://portal.blip.ai/) and login;
 - Click **Create chatbot**;
 - Choose the `Create from scratch` model option;
 - Go to **Settings** and click in **Connection Information**;
