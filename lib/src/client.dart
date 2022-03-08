@@ -11,6 +11,7 @@ import 'models/listener_model.dart';
 
 const maxConnectionTryCount = 10;
 
+/// Allows communication between the client application and the server
 class Client {
   final String uri;
   final Application application;
@@ -30,11 +31,13 @@ class Client {
   bool _closing = false;
   int _connectionTryCount = 0;
 
-  Client({required this.uri, required this.transport, required this.application})
+  Client(
+      {required this.uri, required this.transport, required this.application})
       : _clientChannel = ClientChannel(transport) {
     _initializeClientChannel();
   }
 
+  /// Allows connection with an identifier
   Future<Session> connectWithGuest(identifier) {
     if (!identifier) throw ArgumentError.notNull('The identifier is required');
     application.identifier = identifier;
@@ -42,6 +45,7 @@ class Client {
     return connect();
   }
 
+  /// Allows connection with an identifier and password
   Future<Session> connectWithPassword(identifier, password, presence) {
     if (!identifier) throw ArgumentError.notNull('The identifier is required');
     if (!password) throw ArgumentError.notNull('The password is required');
@@ -53,6 +57,7 @@ class Client {
     return connect();
   }
 
+  /// Allows connection with an identifier and key
   Future<Session> connectWithKey(identifier, key, presence) {
     if (!identifier) throw ArgumentError.notNull('The identifier is required');
     if (!key) throw ArgumentError.notNull('The key is required');
@@ -65,6 +70,7 @@ class Client {
     return connect();
   }
 
+  /// Starts the process of connecting to the server and establish a session
   Future<Session> connect() {
     if (_connectionTryCount >= maxConnectionTryCount) {
       throw Exception(
@@ -89,7 +95,9 @@ class Client {
     });
   }
 
+  /// Start listening to streams
   void _initializeClientChannel() {
+    // Allows Take an action when the connection to the server is closed
     transport.onClose.stream.listen((event) async {
       _listening = false;
       if (!_closing) {
@@ -115,6 +123,7 @@ class Client {
       }
     });
 
+    // Allows executing an action whenever a message type envelope is received by the client
     _clientChannel.onReceiveMessage.stream.listen((Message message) {
       final shouldNotify = _clientChannel.isForMe(message);
 
@@ -135,6 +144,8 @@ class Client {
       _loop(shouldNotify, message);
     });
 
+    // Allows executing an action whenever a notification type envelope is received by the client
+    // Notifies the notification listeners with the received notification
     _clientChannel.onReceiveNotification.stream.listen(
       (notification) {
         for (final listener in _notificationListeners) {
@@ -145,6 +156,8 @@ class Client {
       },
     );
 
+    // Allows executing an action whenever a command type envelope is received by the client
+    // Notifies the command listeners with the received command
     _clientChannel.onReceiveCommand.stream.listen(
       (Command command) {
         final resolve = _commandResolves[command.id];
@@ -161,12 +174,14 @@ class Client {
       },
     );
 
+    // When a session ends in the client, the session finished handlers are notified
     _clientChannel.onSessionFinished.stream.listen((Session session) {
       for (final stream in _sessionFinishedHandlers) {
         stream.sink.add(session);
       }
     });
 
+    // When a session failed in the client, the session failed handlers are notified
     _clientChannel.onSessionFailed.stream.listen((Session session) {
       for (final stream in _sessionFailedHandlers) {
         stream.sink.add(session);
@@ -174,6 +189,7 @@ class Client {
     });
   }
 
+  /// Notifies the [Message] listeners with the received [Message]
   void _loop(final bool shouldNotify, final Message message) {
     try {
       for (final listener in _messageListeners) {
@@ -190,6 +206,7 @@ class Client {
 
   bool isForMe(Envelope envelope) => _clientChannel.isForMe(envelope);
 
+  /// Sends a [Notification] with the received [Message] data
   void notify(bool shouldNotify, Message message, {error}) {
     if (shouldNotify && error != null) {
       sendNotification(
@@ -204,14 +221,19 @@ class Client {
 
     if (shouldNotify && application.notifyConsumed) {
       sendNotification(
-        Notification(id: message.id, to: message.pp ?? message.from, event: NotificationEvent.consumed, metadata: {
-          '#message.to': message.to.toString(),
-          '#message.uniqueId': message.metadata?['#uniqueId'],
-        }),
+        Notification(
+            id: message.id,
+            to: message.pp ?? message.from,
+            event: NotificationEvent.consumed,
+            metadata: {
+              '#message.to': message.to.toString(),
+              '#message.uniqueId': message.metadata?['#uniqueId'],
+            }),
       );
     }
   }
 
+  /// Sends a presence [Command]
   Future<Command?> _sendPresenceCommand() async {
     if (application.authentication is GuestAuthentication) {
       return null;
@@ -226,6 +248,7 @@ class Client {
     );
   }
 
+  /// Sends a receipts [Command]
   Future<Command?> _sendReceiptsCommand() async {
     if (application.authentication is GuestAuthentication) {
       return null;
@@ -237,11 +260,18 @@ class Client {
           uri: '/receipt',
           type: 'application/vnd.lime.receipt+json',
           resource: {
-            'events': ['failed', 'accepted', 'dispatched', 'received', 'consumed']
+            'events': [
+              'failed',
+              'accepted',
+              'dispatched',
+              'received',
+              'consumed'
+            ]
           }),
     );
   }
 
+  /// Sends an [Envelope] to finish a [Session]
   FutureOr<Session?> close() async {
     _closing = true;
 
@@ -253,17 +283,21 @@ class Client {
     }
   }
 
+  /// Sends an [Envelope] to finish a [Session]
   void sendMessage(Message message) {
     _clientChannel.sendMessage(message);
   }
 
+  /// Allows sending a [Notification] type [Envelope]
   void sendNotification(Notification notification) {
     _clientChannel.sendNotification(notification);
   }
 
+  /// Allows sending a [Command] type [Envelope]
   Future<Command> sendCommand(Command command, {int? timeout}) {
     final commandPromise = Future.any(
       [
+        // A future that will be resolved when the envelope is successful received by the client
         Future<Command>(() {
           final c = Completer<Command>();
 
@@ -273,17 +307,24 @@ class Client {
             if (command.status == CommandStatus.success) {
               c.complete(command);
             } else {
-              c.completeError(ClientError(message: 'Error on sendCommand: ${jsonEncode(command.toJson())}'));
+              c.completeError(ClientError(
+                  message:
+                      'Error on sendCommand: ${jsonEncode(command.toJson())}'));
             }
           };
 
           return c.future;
         }),
+        // A future that will be resolved if time out happens
         Future(() {
           final c = Completer<Command>();
 
-          Future.delayed(Duration(milliseconds: timeout ?? application.commandTimeout), () {
-            return c.completeError(ClientError(message: 'Timeout reached - command: ${jsonEncode(command.toJson())}'));
+          Future.delayed(
+              Duration(milliseconds: timeout ?? application.commandTimeout),
+              () {
+            return c.completeError(ClientError(
+                message:
+                    'Timeout reached - command: ${jsonEncode(command.toJson())}'));
           });
 
           return c.future;
@@ -295,7 +336,9 @@ class Client {
     return commandPromise;
   }
 
-  void Function() addMessageListener(StreamController<Message> stream, {bool Function(Message)? filter}) {
+  /// Allow to add a new [Message] listeners, returns a function that can be called to delete this listener from the list
+  void Function() addMessageListener(StreamController<Message> stream,
+      {bool Function(Message)? filter}) {
     _messageListeners.add(Listener<Message>(stream, filter: filter));
 
     return () {
@@ -304,12 +347,15 @@ class Client {
     };
   }
 
+  /// Clean all [Message] listeners
   void clearMessageListeners() {
     _messageListeners.forEach(_closeStream);
     _messageListeners.clear();
   }
 
-  void Function() addCommandListener(StreamController<Command> stream, {bool Function(Command)? filter}) {
+  /// Allow to add a new [Command] listeners, returns a function that can be called to delete this listener from the list
+  void Function() addCommandListener(StreamController<Command> stream,
+      {bool Function(Command)? filter}) {
     _commandListeners.add(Listener<Command>(stream, filter: filter));
 
     return () {
@@ -318,25 +364,30 @@ class Client {
     };
   }
 
+  /// Clear all [Command] listeners
   void clearCommandListeners() {
     _commandListeners.forEach(_closeStream);
     _commandListeners.clear();
   }
 
+  /// Allow to add a new [Notification] listeners, returns a function that can be called to delete this listener from the list
   void Function() addNotificationListener(StreamController<Notification> stream,
       {bool Function(Notification)? filter}) {
     _notificationListeners.add(Listener<Notification>(stream, filter: filter));
+
     return () {
       stream.close();
       _notificationListeners.removeWhere(filterListener(stream, filter));
     };
   }
 
+  /// Clear all [Notification] listeners
   void clearNotificationListeners() {
     _notificationListeners.forEach(_closeStream);
     _notificationListeners.clear();
   }
 
+  /// Allows adding listerner that will be notified when a [Session] ends
   void Function() addSessionFinishedHandlers(StreamController<Session> stream) {
     _sessionFinishedHandlers.add(stream);
     return () {
@@ -345,6 +396,7 @@ class Client {
     };
   }
 
+  /// Clear all [Session] finished handlers
   void clearSessionFinishedHandlers() {
     for (var element in _sessionFinishedHandlers) {
       element.close();
@@ -352,6 +404,7 @@ class Client {
     _sessionFinishedHandlers.clear();
   }
 
+  /// Allows adding listerner that will be notified when a [Session] failed
   void Function() addSessionFailedHandlers(StreamController<Session> stream) {
     _sessionFailedHandlers.add(stream);
     return () {
@@ -360,6 +413,7 @@ class Client {
     };
   }
 
+  /// Clear all [Session] failed handlers
   void clearSessionFailedHandlers() {
     for (var element in _sessionFailedHandlers) {
       element.close();
@@ -367,20 +421,26 @@ class Client {
     _sessionFailedHandlers.clear();
   }
 
-  bool Function(Listener) filterListener<T extends Envelope>(StreamController stream, bool Function(T)? filter) {
+  /// A function to filter a listener
+  bool Function(Listener) filterListener<T extends Envelope>(
+      StreamController stream, bool Function(T)? filter) {
     return (Listener l) => l.stream == stream && l.filter == filter;
   }
 
+  /// Returns the current value of listening variable
   bool get listening => _listening;
 
+  /// Allows Change the listening value and notify your listeners
   set listening(bool listening) {
     _listening = listening;
 
     onListeningChanged.sink.add(listening);
   }
 
+  /// Close a [Stream]
   void _closeStream(Listener listener) => listener.stream.close();
 
+  /// Allows to get a extension
   T _getExtension<T extends BaseExtension>(ExtensionType type, String to) {
     var _extension = _extensions[type];
     if (_extension == null) {
@@ -395,5 +455,7 @@ class Client {
     return _extension as T;
   }
 
-  MediaExtension get media => _getExtension<MediaExtension>(ExtensionType.media, application.domain);
+  /// Returns a media extension
+  MediaExtension get media =>
+      _getExtension<MediaExtension>(ExtensionType.media, application.domain);
 }
