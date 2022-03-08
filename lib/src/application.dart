@@ -1,5 +1,6 @@
 import 'package:lime/lime.dart';
 
+/// A class that contains standard configuration variables used in connection
 class Application {
   String identifier;
   SessionCompression compression;
