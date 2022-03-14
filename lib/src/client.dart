@@ -268,6 +268,8 @@ class Client {
       final result = await _clientChannel.sendFinishingSession();
       onListeningChanged.close();
 
+      await transport.close();
+
       return result;
     }
 
@@ -411,6 +413,9 @@ class Client {
 
   /// Returns the current value of listening variable
   bool get listening => _listening;
+
+  /// Returns the current value of listening variable
+  bool get closing => _closing;
 
   /// Allows Change the listening value and notify your listeners
   set listening(bool listening) {
