@@ -1,3 +1,7 @@
+## 0.0.8
+
+* Exported ClientError class
+
 ## 0.0.7
 
 * Created new get for closing property (client.dart)
