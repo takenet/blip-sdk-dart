@@ -1,3 +1,6 @@
+## 0.0.5
+
+* Added timeout/status info to command and update lime version
 ## 0.0.4
 
 * Readme fix
