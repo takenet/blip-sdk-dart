@@ -1,6 +1,12 @@
+## 0.0.7
+
+* Created new get for closing property (client.dart)
+* Lime version upgrade
+
 ## 0.0.5
 
 * Added timeout/status info to command and update lime version
+
 ## 0.0.4
 
 * Readme fix
