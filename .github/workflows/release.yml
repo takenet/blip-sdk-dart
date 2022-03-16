@@ -4,9 +4,10 @@ name: CI
 
 # Controls when the workflow will run
 on:
-  # Triggers the workflow on push or pull request events but only for the main branch
+  # Refs/tags push events to matching v*, i.e. v1.0, v20.15.10
   push:
-    branches: [ main ]
+    tags:
+      - "v*"
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
@@ -34,17 +35,7 @@ jobs:
         with:
           name: changelog
           path: CHANGELOG.md
-  auto-gen-tag:
-    name: Create Github version tag
-    needs: generate-changelog
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-    - uses: jacopo1395/action-autotag@stable
-      with:
-        GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
-        tag_prefix: "v"
-
+  
   # This workflow contains a single job called "build"
   create-release:
     name: Draft Github release
