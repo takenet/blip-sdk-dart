@@ -1,3 +1,8 @@
+## 0.0.9
+
+* Updated lime package version
+* Removed ClientError and used LimeException instead
+
 ## 0.0.8
 
 * Exported ClientError class
