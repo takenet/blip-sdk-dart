@@ -4,18 +4,31 @@ name: CI
 
 # Controls when the workflow will run
 on:
-  # Refs/tags push events to matching v*, i.e. v1.0, v20.15.10
   push:
-    tags:
-      - "v*"
+    branches: [ main ]
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
+  auto-gen-tag:
+    name: Auto Generate Tag
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.gen-tag-step.outputs.tagname }}
+    steps:
+    - uses: actions/checkout@v2
+    - uses: jacopocarlini/action-autotag@2.0.4
+      id: gen-tag-step
+      with:
+        GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+        tag_prefix: "v"
+
   generate-changelog:
+    if: ${{ startsWith(needs.auto-gen-tag.outputs.tag, 'v') }}
     name: Generate changelog
+    needs: auto-gen-tag
     runs-on: ubuntu-latest
     steps:
       - name: Get latest published release tag
@@ -28,7 +41,7 @@ jobs:
         uses: charmixer/auto-changelog-action@5c6320ae4dedc8743e4439a3c56294c294553fb9
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          future_release: ${{ github.ref }}
+          future_release: ${{ needs.auto-gen-tag.outputs.tag }}
           since_tag: ${{ steps.get_latest_release.outputs.release }}
       - name: Upload changelog
         uses: actions/upload-artifact@v2
@@ -39,9 +52,10 @@ jobs:
   # This workflow contains a single job called "build"
   create-release:
     name: Draft Github release
-    needs: generate-changelog
+    needs: [auto-gen-tag, generate-changelog]
     runs-on: ubuntu-latest
     steps:
+      - run: echo ${{needs.auto-gen-tag.outputs.tag}}
       - name: Download changelog
         uses: actions/download-artifact@v2
         with:
@@ -52,8 +66,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ github.ref }}
-          release_name: Blip SDK ${{ github.ref }}
+          tag_name: ${{ needs.auto-gen-tag.outputs.tag }}
+          release_name: Blip SDK ${{ needs.auto-gen-tag.outputs.tag }}
           body_path: CHANGELOG.md
           draft: false
           prerelease: false
