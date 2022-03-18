@@ -29,7 +29,8 @@ class Client {
   bool _closing = false;
   int _connectionTryCount = 0;
 
-  Client({required this.uri, required this.transport, required this.application})
+  Client(
+      {required this.uri, required this.transport, required this.application})
       : _clientChannel = ClientChannel(transport) {
     _initializeClientChannel();
   }
@@ -332,9 +333,8 @@ class Client {
               return c.completeError(
                 LimeException(
                   command.status!,
-                  command.reason!.code,
-                  description: command.reason!.description,
-                  timeout: true,
+                  ReasonCodes.timeoutError,
+                  description: 'Timeout Reached',
                 ),
               );
             },
@@ -369,7 +369,8 @@ class Client {
   }
 
   /// Allow to add a new [Command] listeners, returns a function that can be called to delete this listener from the list
-  void Function() addCommandListener(StreamController<Command> stream, {bool Function(Command)? filter}) {
+  void Function() addCommandListener(StreamController<Command> stream,
+      {bool Function(Command)? filter}) {
     _commandListeners.add(Listener<Command>(stream, filter: filter));
 
     return () {
@@ -436,7 +437,8 @@ class Client {
   }
 
   /// A function to filter a listener
-  bool Function(Listener) filterListener<T extends Envelope>(StreamController stream, bool Function(T)? filter) {
+  bool Function(Listener) filterListener<T extends Envelope>(
+      StreamController stream, bool Function(T)? filter) {
     return (Listener l) => l.stream == stream && l.filter == filter;
   }
 
@@ -472,5 +474,6 @@ class Client {
   }
 
   /// Returns a media extension
-  MediaExtension get media => _getExtension<MediaExtension>(ExtensionType.media, application.domain);
+  MediaExtension get media =>
+      _getExtension<MediaExtension>(ExtensionType.media, application.domain);
 }
