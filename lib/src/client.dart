@@ -286,7 +286,7 @@ class Client {
     return null;
   }
 
-  /// Sends an [Envelope] to finish a [Session]
+  /// Allows sending a [Message] type [Envelope]
   void sendMessage(Message message) {
     _clientChannel.sendMessage(message);
   }
