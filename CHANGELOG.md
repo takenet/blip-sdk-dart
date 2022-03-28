@@ -1,7 +1,12 @@
+## 0.0.12
+
+* Fix Client => filterListener
+
 ## 0.0.10
 
 * Updated lime package version
 * Fix to use timeout reason code in send command
+
 ## 0.0.9
 
 * Updated lime package version
