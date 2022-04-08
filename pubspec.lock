@@ -80,7 +80,7 @@ packages:
       name: lime
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "0.0.10"
+    version: "0.0.11"
   lints:
     dependency: transitive
     description:
