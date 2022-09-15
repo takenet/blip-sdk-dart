@@ -5,8 +5,12 @@ import 'client.dart';
 class ClientBuilder {
   Application application;
   Transport transport;
+  bool forceSecureConnection;
 
-  ClientBuilder({required this.transport}) : application = Application();
+  ClientBuilder({
+    required this.transport,
+    this.forceSecureConnection = false,
+  }) : application = Application();
 
   /// Allows you to set a custom application for configuration
   ClientBuilder withApplication(Application application) {
@@ -116,11 +120,21 @@ class ClientBuilder {
     application.commandTimeout = timeoutInMilliSecs;
     return this;
   }
+  
+  /// Set a secure connection
+  ClientBuilder withSecureConnection() {
+    forceSecureConnection = true;
+    return this;
+  }
 
   /// Returns a new instance of SDK Client
   Client build() {
-    final uri =
-        '${application.scheme}://${application.hostName}:${application.port}';
-    return Client(uri: uri, transport: transport, application: application);
+    final uri = '${application.scheme}://${application.hostName}:${application.port}';
+    return Client(
+      uri: uri,
+      transport: transport,
+      application: application,
+      forceSecureConnection: forceSecureConnection,
+    );
   }
 }

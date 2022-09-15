@@ -1,6 +1,9 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:math';
+import 'package:blip_sdk/src/config.dart';
 import 'package:lime/lime.dart';
+import 'package:ssl_pinning_plugin/ssl_pinning_plugin.dart';
 import 'application.dart';
 import 'extensions/base.extension.dart';
 import 'extensions/enums/extension_type.enum.dart';
@@ -14,6 +17,7 @@ class Client {
   final String uri;
   final Application application;
   final Transport transport;
+  final bool forceSecureConnection;
 
   ClientChannel _clientChannel;
   final _notificationListeners = <Listener<Notification>>[];
@@ -29,46 +33,62 @@ class Client {
   bool _closing = false;
   int _connectionTryCount = 0;
 
-  Client({required this.uri, required this.transport, required this.application})
-      : _clientChannel = ClientChannel(transport) {
+  ClientChannel get clientChannel => _clientChannel;
+
+  Client({
+    required this.uri,
+    required this.transport,
+    required this.application,
+    this.forceSecureConnection = false,
+  }) : _clientChannel = ClientChannel(transport) {
     _initializeClientChannel();
   }
 
   /// Allows connection with an identifier
-  Future<Session> connectWithGuest(identifier) {
-    if (!identifier) throw ArgumentError.notNull('The identifier is required');
+  Future<Session> connectWithGuest(String identifier) {
     application.identifier = identifier;
     application.authentication = GuestAuthentication();
     return connect();
   }
 
   /// Allows connection with an identifier and password
-  Future<Session> connectWithPassword(identifier, password, presence) {
-    if (!identifier) throw ArgumentError.notNull('The identifier is required');
-    if (!password) throw ArgumentError.notNull('The password is required');
-
+  Future<Session> connectWithPassword(String identifier, String password, {Presence? presence}) {
     application.identifier = identifier;
     application.authentication = PlainAuthentication(password: password);
 
-    if (presence) application.presence = presence;
+    if (presence != null) application.presence = presence;
     return connect();
   }
 
   /// Allows connection with an identifier and key
-  Future<Session> connectWithKey(identifier, key, presence) {
-    if (!identifier) throw ArgumentError.notNull('The identifier is required');
-    if (!key) throw ArgumentError.notNull('The key is required');
-
+  Future<Session> connectWithKey(String identifier, String key, {Presence? presence}) {
     application.identifier = identifier;
     application.authentication = KeyAuthentication(key: key);
 
-    if (presence) application.presence = presence;
+    if (presence != null) application.presence = presence;
 
     return connect();
   }
 
   /// Starts the process of connecting to the server and establish a session
-  Future<Session> connect() {
+  Future<Session> connect() async {
+    if (forceSecureConnection) {
+      const wssProtocol = 'wss://';
+      const httpsProtocol = 'https://';
+      var uri = this.uri;
+
+      if (Platform.isAndroid && uri.contains(wssProtocol)) {
+        uri = uri.replaceFirst(wssProtocol, httpsProtocol);
+      }
+
+      await SslPinningPlugin.check(
+        serverURL: uri,
+        sha: SHA.SHA256,
+        allowedSHAFingerprints: Config.allowedFingerprints,
+        timeout: 300,
+      );
+    }
+
     if (_connectionTryCount >= maxConnectionTryCount) {
       throw Exception(
           'Could not connect: Max connection try count of $maxConnectionTryCount reached. Please check you network and refresh the page.');
@@ -78,11 +98,13 @@ class Client {
     _closing = false;
     return transport
         .open(uri)
-        .then((_) => _clientChannel.establishSession(
-              application.identifier + '@' + application.domain,
-              application.instance,
-              application.authentication,
-            ))
+        .then(
+          (_) => _clientChannel.establishSession(
+            application.identifier + '@' + application.domain,
+            application.instance,
+            application.authentication,
+          ),
+        )
         .then((session) => _sendPresenceCommand().then((_) => session))
         .then((session) => _sendReceiptsCommand().then((_) => session))
         .then((session) {
@@ -104,8 +126,8 @@ class Client {
         // try to reconnect after the timeout
         Future.delayed(Duration(milliseconds: timeout.round()), () async {
           if (!_closing) {
-            transport.onEvelope?.close();
-            transport.onEvelope = StreamController<Map<String, dynamic>>();
+            transport.onEnvelope?.close();
+            transport.onEnvelope = StreamController<Map<String, dynamic>>();
 
             transport.onClose.close();
             transport.onClose = StreamController<bool>();

@@ -1,0 +1,7 @@
+abstract class Config {
+  static const allowedFingerprints = [
+    '6C A1 D2 B6 C4 FF 3C 9D CA E8 0F 37 B9 52 AA 94 88 37 13 35 94 AA 18 3B 72 1D C7 8D C8 8D 1E 9E',
+    'AB 5F B0 A0 A5 90 88 AA 61 3A 11 5B 8A CC F2 62 86 E9 E9 D7 6E 8B 35 75 A6 18 71 F5 DE 44 F5 64',
+    '27 FE A7 4D 91 EC C0 1B A9 90 94 0A 18 9F EA 4B 90 A2 EA 81 96 D0 05 6A 8A 74 E5 A3 E9 00 3C 7B',
+  ];
+}
