@@ -27,7 +27,8 @@ class Client {
   final _sessionFinishedHandlers = <StreamController>[];
   final _sessionFailedHandlers = <StreamController>[];
   final _extensions = <ExtensionType, BaseExtension>{};
-  final onListeningChanged = StreamController();
+  final onListeningChanged = StreamController<bool>();
+  late final StreamController<bool> onConnectionDone;
 
   bool _listening = false;
   bool _closing = false;
@@ -52,7 +53,8 @@ class Client {
   }
 
   /// Allows connection with an identifier and password
-  Future<Session> connectWithPassword(String identifier, String password, {Presence? presence}) {
+  Future<Session> connectWithPassword(String identifier, String password,
+      {Presence? presence}) {
     application.identifier = identifier;
     application.authentication = PlainAuthentication(password: password);
 
@@ -61,7 +63,8 @@ class Client {
   }
 
   /// Allows connection with an identifier and key
-  Future<Session> connectWithKey(String identifier, String key, {Presence? presence}) {
+  Future<Session> connectWithKey(String identifier, String key,
+      {Presence? presence}) {
     application.identifier = identifier;
     application.authentication = KeyAuthentication(key: key);
 
@@ -128,6 +131,9 @@ class Client {
           if (!_closing) {
             transport.onEnvelope?.close();
             transport.onEnvelope = StreamController<Map<String, dynamic>>();
+
+            transport.onConnectionDone?.close();
+            transport.onConnectionDone = StreamController<bool>();
 
             transport.onClose.close();
             transport.onClose = StreamController<bool>();
@@ -206,6 +212,8 @@ class Client {
         stream.sink.add(session);
       }
     });
+
+    onConnectionDone = _clientChannel.onConnectionDone;
   }
 
   /// Notifies the [Message] listeners with the received [Message]
@@ -298,6 +306,7 @@ class Client {
     if (_clientChannel.state == SessionState.established) {
       final result = await _clientChannel.sendFinishingSession();
       onListeningChanged.close();
+      onConnectionDone.close();
 
       await transport.close();
 
@@ -390,7 +399,8 @@ class Client {
   }
 
   /// Allow to add a new [Command] listeners, returns a function that can be called to delete this listener from the list
-  void Function() addCommandListener(StreamController<Command> stream, {bool Function(Command)? filter}) {
+  void Function() addCommandListener(StreamController<Command> stream,
+      {bool Function(Command)? filter}) {
     _commandListeners.add(Listener<Command>(stream, filter: filter));
 
     return () {
@@ -457,7 +467,8 @@ class Client {
   }
 
   /// A function to filter a listener
-  bool Function(Listener<T>) filterListener<T extends Envelope>(StreamController<T> stream, bool Function(T)? filter) {
+  bool Function(Listener<T>) filterListener<T extends Envelope>(
+      StreamController<T> stream, bool Function(T)? filter) {
     return (Listener<T> l) => l.stream == stream && l.filter == filter;
   }
 
@@ -493,5 +504,6 @@ class Client {
   }
 
   /// Returns a media extension
-  MediaExtension get media => _getExtension<MediaExtension>(ExtensionType.media, application.domain);
+  MediaExtension get media =>
+      _getExtension<MediaExtension>(ExtensionType.media, application.domain);
 }
