@@ -70,10 +70,12 @@ packages:
   lime:
     dependency: "direct main"
     description:
-      path: "../lime-dart"
-      relative: true
-    source: path
-    version: "0.0.15"
+      path: "."
+      ref: "feature/blip-chat-sdk"
+      resolved-ref: c66f422c7ed391b565114869372541db56a32aba
+      url: "https://github.com/takenet/lime-dart.git"
+    source: git
+    version: "0.0.16"
   lints:
     dependency: transitive
     description:

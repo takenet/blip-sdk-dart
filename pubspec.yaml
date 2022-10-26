@@ -13,9 +13,11 @@ dependencies:
     sdk: flutter
   # lime:
   #   path: ../lime-dart/
-  git:
-    url: git://github.com/takenet/lime-dart.git
-    ref: feature/blip-chat-sdk # branch name
+  lime:
+    git:
+      url: https://github.com/takenet/lime-dart.git
+      ref: feature/blip-chat-sdk # branch name
+
   # ssl_pinning_plugin: ^2.0.0
   #lime: ^0.0.15
 
