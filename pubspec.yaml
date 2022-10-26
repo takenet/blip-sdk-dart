@@ -5,15 +5,18 @@ homepage: https://github.com/takenet/blip-sdk-dart#readme
 repository: https://github.com/takenet/blip-sdk-dart
 
 environment:
-  sdk: ">=2.12.0 <3.0.0"
-  flutter: ">=1.17.0"
+  sdk: '>=2.12.0 <3.0.0'
+  flutter: '>=1.17.0'
 
 dependencies:
   flutter:
     sdk: flutter
-  lime:
-    path: ../lime-dart/
-  ssl_pinning_plugin: ^2.0.0
+  # lime:
+  #   path: ../lime-dart/
+  git:
+    url: git://github.com/takenet/lime-dart.git
+    ref: feature/blip-chat-sdk # branch name
+  # ssl_pinning_plugin: ^2.0.0
   #lime: ^0.0.15
 
 dev_dependencies:

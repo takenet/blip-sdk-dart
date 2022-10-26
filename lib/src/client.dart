@@ -1,9 +1,7 @@
 import 'dart:async';
-import 'dart:io';
 import 'dart:math';
-import 'package:blip_sdk/src/config.dart';
 import 'package:lime/lime.dart';
-import 'package:ssl_pinning_plugin/ssl_pinning_plugin.dart';
+// import 'package:ssl_pinning_plugin/ssl_pinning_plugin.dart';
 import 'application.dart';
 import 'extensions/base.extension.dart';
 import 'extensions/enums/extension_type.enum.dart';
@@ -75,22 +73,22 @@ class Client {
 
   /// Starts the process of connecting to the server and establish a session
   Future<Session> connect() async {
-    if (forceSecureConnection) {
-      const wssProtocol = 'wss://';
-      const httpsProtocol = 'https://';
-      var uri = this.uri;
+    // if (forceSecureConnection) {
+    //   const wssProtocol = 'wss://';
+    //   const httpsProtocol = 'https://';
+    //   var uri = this.uri;
 
-      if (Platform.isAndroid && uri.contains(wssProtocol)) {
-        uri = uri.replaceFirst(wssProtocol, httpsProtocol);
-      }
+    //   if (Platform.isAndroid && uri.contains(wssProtocol)) {
+    //     uri = uri.replaceFirst(wssProtocol, httpsProtocol);
+    //   }
 
-      await SslPinningPlugin.check(
-        serverURL: uri,
-        sha: SHA.SHA256,
-        allowedSHAFingerprints: Config.allowedFingerprints,
-        timeout: 300,
-      );
-    }
+    //   await SslPinningPlugin.check(
+    //     serverURL: uri,
+    //     sha: SHA.SHA256,
+    //     allowedSHAFingerprints: Config.allowedFingerprints,
+    //     timeout: 300,
+    //   );
+    // }
 
     if (_connectionTryCount >= maxConnectionTryCount) {
       throw Exception(
@@ -100,7 +98,7 @@ class Client {
     _connectionTryCount++;
     _closing = false;
     return transport
-        .open(uri)
+        .open(uri, forceSecureConnection: forceSecureConnection)
         .then(
           (_) => _clientChannel.establishSession(
             application.identifier + '@' + application.domain,
