@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:lime/lime.dart';
-// import 'package:ssl_pinning_plugin/ssl_pinning_plugin.dart';
 import 'application.dart';
 import 'extensions/base.extension.dart';
 import 'extensions/enums/extension_type.enum.dart';
@@ -15,7 +14,7 @@ class Client {
   final String uri;
   final Application application;
   final Transport transport;
-  final bool forceSecureConnection;
+  final bool useMtls;
 
   ClientChannel _clientChannel;
   final _notificationListeners = <Listener<Notification>>[];
@@ -38,7 +37,7 @@ class Client {
     required this.uri,
     required this.transport,
     required this.application,
-    this.forceSecureConnection = false,
+    this.useMtls = false,
   }) : _clientChannel = ClientChannel(transport) {
     _initializeClientChannel();
   }
@@ -73,22 +72,6 @@ class Client {
 
   /// Starts the process of connecting to the server and establish a session
   Future<Session> connect() async {
-    // if (forceSecureConnection) {
-    //   const wssProtocol = 'wss://';
-    //   const httpsProtocol = 'https://';
-    //   var uri = this.uri;
-
-    //   if (Platform.isAndroid && uri.contains(wssProtocol)) {
-    //     uri = uri.replaceFirst(wssProtocol, httpsProtocol);
-    //   }
-
-    //   await SslPinningPlugin.check(
-    //     serverURL: uri,
-    //     sha: SHA.SHA256,
-    //     allowedSHAFingerprints: Config.allowedFingerprints,
-    //     timeout: 300,
-    //   );
-    // }
 
     if (_connectionTryCount >= maxConnectionTryCount) {
       throw Exception(
@@ -98,7 +81,7 @@ class Client {
     _connectionTryCount++;
     _closing = false;
     return transport
-        .open(uri, forceSecureConnection: forceSecureConnection)
+        .open(uri, useMtls: useMtls)
         .then(
           (_) => _clientChannel.establishSession(
             application.identifier + '@' + application.domain,

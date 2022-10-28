@@ -72,7 +72,7 @@ packages:
     description:
       path: "."
       ref: "feature/blip-chat-sdk"
-      resolved-ref: c66f422c7ed391b565114869372541db56a32aba
+      resolved-ref: "1df0e30ae06c7fabcd27edacd4413ac9e7e53638"
       url: "https://github.com/takenet/lime-dart.git"
     source: git
     version: "0.0.16"

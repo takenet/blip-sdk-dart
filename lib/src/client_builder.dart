@@ -5,11 +5,11 @@ import 'client.dart';
 class ClientBuilder {
   Application application;
   Transport transport;
-  bool forceSecureConnection;
+  bool useMtls;
 
   ClientBuilder({
     required this.transport,
-    this.forceSecureConnection = false,
+    this.useMtls = false,
   }) : application = Application();
 
   /// Allows you to set a custom application for configuration
@@ -122,8 +122,8 @@ class ClientBuilder {
   }
   
   /// Set a secure connection
-  ClientBuilder withSecureConnection() {
-    forceSecureConnection = true;
+  ClientBuilder withMtls() {
+    useMtls = true;
     return this;
   }
 
@@ -134,7 +134,7 @@ class ClientBuilder {
       uri: uri,
       transport: transport,
       application: application,
-      forceSecureConnection: forceSecureConnection,
+      useMtls: useMtls,
     );
   }
 }
