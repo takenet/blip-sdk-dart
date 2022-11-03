@@ -25,7 +25,8 @@ class Client {
   final _sessionFailedHandlers = <StreamController>[];
   final _extensions = <ExtensionType, BaseExtension>{};
   final onListeningChanged = StreamController<bool>();
-  late final StreamController<bool> onConnectionDone;
+
+  late StreamController<bool> onConnectionDone;
 
   bool _listening = false;
   bool _closing = false;
@@ -72,7 +73,6 @@ class Client {
 
   /// Starts the process of connecting to the server and establish a session
   Future<Session> connect() async {
-
     if (_connectionTryCount >= maxConnectionTryCount) {
       throw Exception(
           'Could not connect: Max connection try count of $maxConnectionTryCount reached. Please check you network and refresh the page.');
