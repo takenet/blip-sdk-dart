@@ -1,6 +1,6 @@
 name: blip_sdk
 description: A simple SDK built for BLiP using Flutter/Dart
-version: 0.0.17
+version: 0.0.18
 homepage: https://github.com/takenet/blip-sdk-dart#readme
 repository: https://github.com/takenet/blip-sdk-dart
 
@@ -11,15 +11,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  # lime:
-  #   path: ../lime-dart/
-  lime:
-    git:
-      url: https://github.com/takenet/lime-dart.git
-      ref: feature/blip-chat-sdk # branch name
-
-  # ssl_pinning_plugin: ^2.0.0
-  #lime: ^0.0.15
+  lime: ^0.0.17
 
 dev_dependencies:
   flutter_test:

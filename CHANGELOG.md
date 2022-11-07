@@ -1,3 +1,8 @@
+## 0.0.18
+
+* Updated lime 
+* Added onConnectionDone Listener
+
 ## 0.0.17
 
 * Updated lime 
