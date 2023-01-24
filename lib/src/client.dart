@@ -286,8 +286,9 @@ class Client {
 
     if (_clientChannel.state == SessionState.established) {
       final result = await _clientChannel.sendFinishingSession();
-      onListeningChanged.close();
-      onConnectionDone.close();
+
+      await onListeningChanged.close();
+      await transport.onConnectionDone?.close();
 
       await transport.close();
 
