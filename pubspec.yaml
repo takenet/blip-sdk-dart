@@ -4,6 +4,8 @@ version: 0.0.20
 homepage: https://github.com/takenet/blip-sdk-dart#readme
 repository: https://github.com/takenet/blip-sdk-dart
 
+publish_to: 'none'
+
 environment:
   sdk: '>=2.12.0 <3.0.0'
   flutter: '>=1.17.0'
@@ -11,7 +13,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  lime: ^0.0.19
+  # lime: ^0.0.19
+  lime:
+    path: ../lime-dart
 
 dev_dependencies:
   flutter_test:
