@@ -1,3 +1,8 @@
+## 0.0.21
+
+- Updated Lime version from 0.0.19 to 0.0.20
+- Fix close of onConnectionDone stream
+
 ## 0.0.20
 
 - Updated lime
