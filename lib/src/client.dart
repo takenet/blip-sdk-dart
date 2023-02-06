@@ -24,9 +24,9 @@ class Client {
   final _sessionFinishedHandlers = <StreamController>[];
   final _sessionFailedHandlers = <StreamController>[];
   final _extensions = <ExtensionType, BaseExtension>{};
-  final onListeningChanged = StreamController<bool>();
 
   late StreamController<bool> onConnectionDone;
+  var onListeningChanged = StreamController<bool>();
 
   bool _listening = false;
   bool _closing = false;
@@ -291,6 +291,7 @@ class Client {
     }
 
     onListeningChanged.close();
+    onListeningChanged = StreamController<bool>();
 
     _clientChannel.onConnectionDone.close();
     _clientChannel.onConnectionDone = StreamController<bool>();
