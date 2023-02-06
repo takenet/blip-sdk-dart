@@ -12,8 +12,12 @@ dependencies:
   flutter:
     sdk: flutter
   # lime: ^0.0.20
+  # lime:
+  #   path: ../lime-dart
   lime:
-    path: ../lime-dart
+    git:
+      url: https://github.com/takenet/lime-dart
+      ref: feature/398343-offline-behavior
 
 dev_dependencies:
   flutter_test:
