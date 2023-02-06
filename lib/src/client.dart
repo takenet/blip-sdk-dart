@@ -282,23 +282,23 @@ class Client {
 
   /// Sends an [Envelope] to finish a [Session]
   Future<Session?> close() async {
+    Session? result;
     _closing = true;
 
-    if (_clientChannel.state == SessionState.established) {
-      final result = await _clientChannel.sendFinishingSession();
-
-      onListeningChanged.close();
-
-      _clientChannel.onConnectionDone.close();
-      _clientChannel.onConnectionDone = StreamController<bool>();
-      onConnectionDone = _clientChannel.onConnectionDone;
-
-      await transport.close();
-
-      return result;
+    if (_clientChannel.state == SessionState.established &&
+        transport.socket?.closeCode == null) {
+      result = await _clientChannel.sendFinishingSession();
     }
 
-    return null;
+    onListeningChanged.close();
+
+    _clientChannel.onConnectionDone.close();
+    _clientChannel.onConnectionDone = StreamController<bool>();
+    onConnectionDone = _clientChannel.onConnectionDone;
+
+    await transport.close();
+
+    return result;
   }
 
   /// Allows sending a [Message] type [Envelope]

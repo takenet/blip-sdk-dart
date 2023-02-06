@@ -11,7 +11,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  lime: ^0.0.20
+  # lime: ^0.0.20
+  lime:
+    path: ../lime-dart
 
 dev_dependencies:
   flutter_test:
