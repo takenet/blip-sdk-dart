@@ -1,6 +1,6 @@
 name: blip_sdk
 description: A simple SDK built for BLiP using Flutter/Dart
-version: 0.0.21
+version: 0.0.22
 homepage: https://github.com/takenet/blip-sdk-dart#readme
 repository: https://github.com/takenet/blip-sdk-dart
 
@@ -11,13 +11,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  # lime: ^0.0.20
-  # lime:
-  #   path: ../lime-dart
-  lime:
-    git:
-      url: https://github.com/takenet/lime-dart
-      ref: feature/398343-offline-behavior
+    
+  lime: ^0.0.21
 
 dev_dependencies:
   flutter_test:

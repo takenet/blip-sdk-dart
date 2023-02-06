@@ -86,12 +86,11 @@ packages:
   lime:
     dependency: "direct main"
     description:
-      path: "."
-      ref: "feature/398343-offline-behavior"
-      resolved-ref: fc162a4d40f0026fcc85d046f2e3334f4a7d1c37
-      url: "https://github.com/takenet/lime-dart"
-    source: git
-    version: "0.0.20"
+      name: lime
+      sha256: "209749068908fd6233a5d42300f791185b51bbd547f7f9c03ce2b8c218781569"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.0.21"
   lints:
     dependency: transitive
     description:
