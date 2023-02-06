@@ -24,9 +24,9 @@ class Client {
   final _sessionFinishedHandlers = <StreamController>[];
   final _sessionFailedHandlers = <StreamController>[];
   final _extensions = <ExtensionType, BaseExtension>{};
-  final onListeningChanged = StreamController<bool>();
 
   late StreamController<bool> onConnectionDone;
+  var onListeningChanged = StreamController<bool>();
 
   bool _listening = false;
   bool _closing = false;
@@ -282,23 +282,24 @@ class Client {
 
   /// Sends an [Envelope] to finish a [Session]
   Future<Session?> close() async {
+    Session? result;
     _closing = true;
 
-    if (_clientChannel.state == SessionState.established) {
-      final result = await _clientChannel.sendFinishingSession();
-
-      onListeningChanged.close();
-
-      _clientChannel.onConnectionDone.close();
-      _clientChannel.onConnectionDone = StreamController<bool>();
-      onConnectionDone = _clientChannel.onConnectionDone;
-
-      await transport.close();
-
-      return result;
+    if (_clientChannel.state == SessionState.established &&
+        transport.socket?.closeCode == null) {
+      result = await _clientChannel.sendFinishingSession();
     }
 
-    return null;
+    onListeningChanged.close();
+    onListeningChanged = StreamController<bool>();
+
+    _clientChannel.onConnectionDone.close();
+    _clientChannel.onConnectionDone = StreamController<bool>();
+    onConnectionDone = _clientChannel.onConnectionDone;
+
+    await transport.close();
+
+    return result;
   }
 
   /// Allows sending a [Message] type [Envelope]

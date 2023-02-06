@@ -1,3 +1,9 @@
+## 0.0.22
+
+- Updated Lime version from 0.0.20 to 0.0.21
+- Fix onListeningChanged stream close
+- Fix client closing to consider socket's closeCode
+
 ## 0.0.21
 
 - Updated Lime version from 0.0.19 to 0.0.20
