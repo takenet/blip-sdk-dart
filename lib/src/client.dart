@@ -15,6 +15,7 @@ class Client {
   final Application application;
   final Transport transport;
   final bool useMtls;
+  final Future<void> Function()? onConnect;
 
   ClientChannel _clientChannel;
   final _notificationListeners = <Listener<Notification>>[];
@@ -39,6 +40,7 @@ class Client {
     required this.transport,
     required this.application,
     this.useMtls = false,
+    this.onConnect,
   }) : _clientChannel = ClientChannel(transport) {
     _initializeClientChannel();
   }
@@ -123,7 +125,7 @@ class Client {
 
             _initializeClientChannel();
 
-            await connect();
+            await (onConnect ?? connect)();
           }
         });
       }
