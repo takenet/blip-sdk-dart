@@ -87,10 +87,10 @@ packages:
     dependency: "direct main"
     description:
       name: lime
-      sha256: "209749068908fd6233a5d42300f791185b51bbd547f7f9c03ce2b8c218781569"
+      sha256: "45b241f5dc636b3bd3b211ac7d69f0773bfc725b626d363bd8706fdda612dd93"
       url: "https://pub.dev"
     source: hosted
-    version: "0.0.21"
+    version: "0.0.23"
   lints:
     dependency: transitive
     description:
