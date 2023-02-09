@@ -1,3 +1,8 @@
+## 0.0.23
+
+- Updated Lime version from 0.0.21 to 0.0.23
+- Created onConnect parameter on ClientBuilder
+
 ## 0.0.22
 
 - Updated Lime version from 0.0.20 to 0.0.21

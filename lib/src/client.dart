@@ -15,6 +15,7 @@ class Client {
   final Application application;
   final Transport transport;
   final bool useMtls;
+  final Future<void> Function()? onConnect;
 
   ClientChannel _clientChannel;
   final _notificationListeners = <Listener<Notification>>[];
@@ -39,6 +40,7 @@ class Client {
     required this.transport,
     required this.application,
     this.useMtls = false,
+    this.onConnect,
   }) : _clientChannel = ClientChannel(transport) {
     _initializeClientChannel();
   }
@@ -110,20 +112,7 @@ class Client {
         // try to reconnect after the timeout
         Future.delayed(Duration(milliseconds: timeout.round()), () async {
           if (!_closing) {
-            transport.onEnvelope?.close();
-            transport.onEnvelope = StreamController<Map<String, dynamic>>();
-
-            transport.onConnectionDone?.close();
-            transport.onConnectionDone = StreamController<bool>();
-
-            transport.onClose.close();
-            transport.onClose = StreamController<bool>();
-
-            _clientChannel = ClientChannel(transport);
-
-            _initializeClientChannel();
-
-            await connect();
+            await (onConnect ?? _onConnect)();
           }
         });
       }
@@ -492,4 +481,21 @@ class Client {
   /// Returns a media extension
   MediaExtension get media =>
       _getExtension<MediaExtension>(ExtensionType.media, application.domain);
+
+  Future<void> _onConnect() async {
+    transport.onEnvelope?.close();
+    transport.onEnvelope = StreamController<Map<String, dynamic>>();
+
+    transport.onConnectionDone?.close();
+    transport.onConnectionDone = StreamController<bool>();
+
+    transport.onClose.close();
+    transport.onClose = StreamController<bool>();
+
+    _clientChannel = ClientChannel(transport);
+
+    _initializeClientChannel();
+
+    await connect();
+  }
 }

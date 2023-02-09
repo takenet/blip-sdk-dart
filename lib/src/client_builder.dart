@@ -6,6 +6,7 @@ class ClientBuilder {
   Application application;
   Transport transport;
   bool useMtls;
+  Future<void> Function()? onConnect;
 
   ClientBuilder({
     required this.transport,
@@ -127,6 +128,13 @@ class ClientBuilder {
     return this;
   }
 
+  /// Set a secure connection
+  ClientBuilder withConnectionFunction(
+      final Future<void> Function()? onConnect) {
+    this.onConnect = onConnect;
+    return this;
+  }
+
   /// Returns a new instance of SDK Client
   Client build() {
     final uri =
@@ -136,6 +144,7 @@ class ClientBuilder {
       transport: transport,
       application: application,
       useMtls: useMtls,
+      onConnect: onConnect,
     );
   }
 }
