@@ -112,20 +112,7 @@ class Client {
         // try to reconnect after the timeout
         Future.delayed(Duration(milliseconds: timeout.round()), () async {
           if (!_closing) {
-            transport.onEnvelope?.close();
-            transport.onEnvelope = StreamController<Map<String, dynamic>>();
-
-            transport.onConnectionDone?.close();
-            transport.onConnectionDone = StreamController<bool>();
-
-            transport.onClose.close();
-            transport.onClose = StreamController<bool>();
-
-            _clientChannel = ClientChannel(transport);
-
-            _initializeClientChannel();
-
-            await (onConnect ?? connect)();
+            await (onConnect ?? _onConnect)();
           }
         });
       }
@@ -494,4 +481,21 @@ class Client {
   /// Returns a media extension
   MediaExtension get media =>
       _getExtension<MediaExtension>(ExtensionType.media, application.domain);
+
+  Future<void> _onConnect() async {
+    transport.onEnvelope?.close();
+    transport.onEnvelope = StreamController<Map<String, dynamic>>();
+
+    transport.onConnectionDone?.close();
+    transport.onConnectionDone = StreamController<bool>();
+
+    transport.onClose.close();
+    transport.onClose = StreamController<bool>();
+
+    _clientChannel = ClientChannel(transport);
+
+    _initializeClientChannel();
+
+    await connect();
+  }
 }
