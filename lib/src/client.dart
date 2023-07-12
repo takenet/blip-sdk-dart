@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:math';
+
 import 'package:lime/lime.dart';
+
 import 'application.dart';
 import 'extensions/base.extension.dart';
 import 'extensions/enums/extension_type.enum.dart';
@@ -82,22 +84,29 @@ class Client {
 
     _connectionTryCount++;
     _closing = false;
-    return transport
-        .open(uri, useMtls: useMtls)
-        .then(
-          (_) => _clientChannel.establishSession(
-            application.identifier + '@' + application.domain,
-            application.instance,
-            application.authentication,
-          ),
-        )
-        .then((session) => _sendPresenceCommand().then((_) => session))
-        .then((session) => _sendReceiptsCommand().then((_) => session))
-        .then((session) {
-      _listening = true;
-      _connectionTryCount = 0;
-      return session;
-    });
+
+    await transport.open(
+      uri,
+      useMtls: useMtls,
+    );
+
+    final session = await _clientChannel.establishSession(
+      application.identifier + '@' + application.domain,
+      application.instance,
+      application.authentication,
+    );
+
+    await Future.wait(
+      <Future>[
+        _sendPresenceCommand(),
+        _sendReceiptsCommand(),
+      ],
+    );
+
+    _listening = true;
+    _connectionTryCount = 0;
+
+    return session;
   }
 
   /// Start listening to streams
@@ -238,11 +247,12 @@ class Client {
     }
     return sendCommand(
       Command(
-          id: guid(),
-          method: CommandMethod.set,
-          uri: '/presence',
-          type: 'application/vnd.lime.presence+json',
-          resource: application.presence),
+        id: guid(),
+        method: CommandMethod.set,
+        uri: '/presence',
+        type: 'application/vnd.lime.presence+json',
+        resource: application.presence,
+      ),
     );
   }
 
