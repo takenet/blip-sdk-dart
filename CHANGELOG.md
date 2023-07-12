@@ -1,3 +1,7 @@
+## 0.0.24
+
+- Improved client connect readability and performance.
+
 ## 0.0.23
 
 - Updated Lime version from 0.0.21 to 0.0.23
