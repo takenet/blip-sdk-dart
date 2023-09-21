@@ -1,3 +1,7 @@
+## 0.0.26
+
+- Upgraded Lime version from 0.0.24 to 0.0.25.
+
 ## 0.0.25
 
 - Upgraded Lime version from 0.0.23 to 0.0.24.
