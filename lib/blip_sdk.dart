@@ -1,6 +1,7 @@
-library blip_sdk;
+library;
 
 export 'package:lime/lime.dart';
+
 export 'src/application.dart' show Application;
 export 'src/client.dart' show Client;
 export 'src/client_builder.dart' show ClientBuilder;

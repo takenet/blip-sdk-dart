@@ -44,7 +44,7 @@ jobs:
           future_release: ${{ needs.auto-gen-tag.outputs.tag }}
           since_tag: ${{ steps.get_latest_release.outputs.release }}
       - name: Upload changelog
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: changelog
           path: CHANGELOG.md
@@ -57,7 +57,7 @@ jobs:
     steps:
       - run: echo ${{needs.auto-gen-tag.outputs.tag}}
       - name: Download changelog
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           name: changelog
       - name: Draft release with changelog
@@ -80,7 +80,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.7.8'
+          flutter-version: '3.27.0'
       - name: Install dependencies
         run: flutter pub get
       - name: Run tests
@@ -95,7 +95,7 @@ jobs:
       - name: Install Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.7.8'
+          flutter-version: '3.27.0'
       - name: Check Publish Warnings
         run: dart pub publish --dry-run
       - name: Publish

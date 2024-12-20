@@ -1,3 +1,7 @@
+## 0.0.27
+
+- Upgraded Lime version from 0.0.25 to 0.0.26 and add support to latest flutter stable version.
+
 ## 0.0.26
 
 - Upgraded Lime version from 0.0.24 to 0.0.25.
