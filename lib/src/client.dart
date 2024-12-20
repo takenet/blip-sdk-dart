@@ -29,7 +29,7 @@ class Client {
   final _extensions = <ExtensionType, BaseExtension>{};
 
   late StreamController<bool> onConnectionDone;
-  var onListeningChanged = StreamController<bool>();
+  var onListeningChanged = StreamController<bool>.broadcast();
 
   bool _listening = false;
   bool _closing = false;
@@ -91,7 +91,7 @@ class Client {
     );
 
     final session = await _clientChannel.establishSession(
-      application.identifier + '@' + application.domain,
+      '${application.identifier}@${application.domain}',
       application.instance,
       application.authentication,
     );
@@ -103,7 +103,7 @@ class Client {
       ],
     );
 
-    _listening = true;
+    listening = true;
     _connectionTryCount = 0;
 
     return session;
@@ -113,7 +113,7 @@ class Client {
   void _initializeClientChannel() {
     // Allows Take an action when the connection to the server is closed
     transport.onClose.stream.listen((event) async {
-      _listening = false;
+      listening = false;
       if (!_closing) {
         // Use an exponential backoff for the timeout
         num timeout = 100 * pow(2, _connectionTryCount);
@@ -283,18 +283,10 @@ class Client {
   Future<Session?> close() async {
     Session? result;
     _closing = true;
-
     if (_clientChannel.state == SessionState.established &&
         transport.socket?.closeCode == null) {
       result = await _clientChannel.sendFinishingSession();
     }
-
-    onListeningChanged.close();
-    onListeningChanged = StreamController<bool>();
-
-    _clientChannel.onConnectionDone.close();
-    _clientChannel.onConnectionDone = StreamController<bool>();
-    onConnectionDone = _clientChannel.onConnectionDone;
 
     await transport.close();
 
@@ -475,17 +467,17 @@ class Client {
 
   /// Allows to get a extension
   T _getExtension<T extends BaseExtension>(ExtensionType type, String to) {
-    var _extension = _extensions[type];
-    if (_extension == null) {
+    var extension = _extensions[type];
+    if (extension == null) {
       switch (type) {
         case ExtensionType.media:
-          _extension = MediaExtension(this, to);
+          extension = MediaExtension(this, to);
           break;
       }
 
-      _extensions[type] = _extension;
+      _extensions[type] = extension;
     }
-    return _extension as T;
+    return extension as T;
   }
 
   /// Returns a media extension
@@ -493,15 +485,6 @@ class Client {
       _getExtension<MediaExtension>(ExtensionType.media, application.domain);
 
   Future<void> _onConnect() async {
-    transport.onEnvelope?.close();
-    transport.onEnvelope = StreamController<Map<String, dynamic>>();
-
-    transport.onConnectionDone?.close();
-    transport.onConnectionDone = StreamController<bool>();
-
-    transport.onClose.close();
-    transport.onClose = StreamController<bool>();
-
     _clientChannel = ClientChannel(transport);
 
     _initializeClientChannel();

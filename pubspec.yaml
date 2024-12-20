@@ -1,23 +1,22 @@
 name: blip_sdk
 description: A simple SDK built for BLiP using Flutter/Dart
-version: 0.0.26
+version: 0.0.27
 homepage: https://github.com/takenet/blip-sdk-dart#readme
 repository: https://github.com/takenet/blip-sdk-dart
 
 environment:
-  sdk: '>=2.12.0 <4.0.0'
-  flutter: '>=1.17.0'
+  sdk: ^3.5.1
 
 dependencies:
   flutter:
     sdk: flutter
     
-  lime: ^0.0.25
+  lime: ^0.0.26
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^1.0.0
+  flutter_lints: ^5.0.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
